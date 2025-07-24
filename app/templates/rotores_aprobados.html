@@ -1,0 +1,83 @@
+{% extends "layout.html" %}
+{% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/programa_rotores.css') }}">{% endblock %}
+{% block title %}Programa Rotores - Aprobados{% endblock %}
+{% block page_header %}Programa de Rotores (Aprobadas){% endblock %}
+
+{% block content %}
+<div class="content-section programa-rotores-container">
+    <div class="command-bar">
+        <div class="command-bar-left">
+            <h4 class="mb-0">Órdenes Aprobadas</h4>
+        </div>
+        <div class="command-bar-right">
+            <button class="btn btn-sm btn-primary" style="background-color: #007bff; border-color: #007bff; color: #fff;" data-toggle="collapse" data-target="#searchFilters" title="Buscar en Aprobados"><i class="fas fa-search"></i></button>
+            <a href="{{ url_for('rotores.programa_rotores') }}" class="btn btn-sm btn-outline-info" title="Ver Pendientes">
+                <i class="fas fa-arrow-left"></i><span class="d-none d-md-inline ml-1">Volver a Pendientes</span>
+            </a>
+        </div>
+    </div>
+    <div class="collapse" id="searchFilters">
+        <div class="card card-body mb-3">
+            <form method="GET" action="{{ url_for('rotores.programa_rotores_aprobados') }}">
+                <div class="form-row align-items-end">
+                    <div class="form-group col-md-5">
+                        <label for="item_filter">Buscar por Item:</label>
+                        <input type="text" class="form-control" id="item_filter" name="item_filter" value="{{ request.args.get('item_filter', '') }}" placeholder="Escribe parte del Item...">
+                    </div>
+                    <div class="form-group col-md-5">
+                        <label for="item_number_filter">Buscar por Item Number:</label>
+                        <input type="text" class="form-control" id="item_number_filter" name="item_number_filter" value="{{ request.args.get('item_number_filter', '') }}" placeholder="Escribe parte del Item Number...">
+                    </div>
+                    <div class="form-group col-md-2 d-flex" style="gap: 0.5rem;">
+                        <button type="submit" class="btn btn-primary btn-sm w-100"><i class="fas fa-search"></i> Buscar</button>
+                        <a href="{{ url_for('rotores.programa_rotores_aprobados') }}" class="btn btn-secondary btn-sm w-100">Limpiar</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover lm-table">
+            <thead class="thead-light">
+                <tr>
+                    <th style="min-width: 150px;">Item</th>
+                    <th style="min-width: 150px;">Item Number</th>
+                    <th style="min-width: 90px;">Cantidad</th>
+                    {% for columna in columnas %}
+                        <th style="min-width: 150px;">{{ columna.nombre }}</th>
+                    {% endfor %}
+                    <th style="width: 60px;">Acción</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for orden in ordenes %}
+                <tr>
+                    <td class="align-middle font-weight-bold">{{ orden.item }}</td>
+                    <td class="align-middle">{{ orden.item_number }}</td>
+                    <td class="align-middle text-center">{{ orden.cantidad }}</td>
+                    
+                    {% for columna in columnas %}
+                        {% set celda_obj = datos.get((orden.id, columna.id)) %}
+                        <td class="align-middle">{{- celda_obj.valor if celda_obj else '' -}}</td>
+                    {% endfor %}
+                    
+                    <td class="align-middle text-center">
+                        {% if 'programa_rotores.edit' in permissions %}
+                        <form action="{{ url_for('rotores.toggle_status_rotores', orden_id=orden.id) }}" method="POST" class="d-inline">
+                             <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
+                             <button type="submit" class="btn btn-sm btn-warning" title="Devolver a Pendientes"><i class="fas fa-undo"></i></button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="{{ 4 + columnas|length }}" class="text-center text-muted py-4">No hay órdenes aprobadas.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% include 'partials/_pagination.html' %}
+</div>
+{% endblock %}

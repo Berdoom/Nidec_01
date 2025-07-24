@@ -1,0 +1,33 @@
+<div class="modal fade" id="addRowModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Añadir Nueva Orden a Programa LM</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">×</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="addRowFormLM" action="{{ url_for('lm.add_row_lm') }}" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
+                    <div class="form-group">
+                        <label for="wip_order" class="font-weight-bold">WIP Order:</label>
+                        <input type="text" class="form-control" id="wip_order" name="wip_order" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="item" class="font-weight-bold">Item:</label>
+                        <input type="text" class="form-control" id="item" name="item">
+                    </div>
+                    <div class="form-group">
+                        <label for="qty" class="font-weight-bold">QTY:</label>
+                        <input type="number" class="form-control" id="qty" name="qty" value="1" required>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Crear Orden</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

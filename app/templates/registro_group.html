@@ -1,0 +1,241 @@
+{% extends "layout.html" %}
+
+{% block title %}Registro de Producción - {{ group_name }}{% endblock %}
+{% block page_header %}Dashboard de Registro: {{ group_name }}{% endblock %}
+
+{% block styles %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/registro.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="registro-page">
+    <!-- Fila de Filtros -->
+    <div class="content-section">
+        <div class="d-flex flex-wrap justify-content-between align-items-center">
+            <h4 class="mb-2 mb-md-0">
+                Análisis del Día: <strong class="text-nidec-green-dark">{{ selected_date }}</strong>
+            </h4>
+            <div class="d-flex align-items-center">
+                <form method="GET" action="{{ url_for('production.registro', group=group_name.lower()) }}" class="form-inline">
+                    <div class="form-group mb-2 mb-sm-0">
+                        <label for="fecha" class="mr-2 font-weight-bold">Cambiar Fecha:</label>
+                        <input type="date" class="form-control" id="fecha" name="fecha" value="{{ selected_date }}">
+                    </div>
+                    <!-- =============================================================== -->
+                    <!-- ====== CAMBIO: Se cambió 'btn-primary' por 'btn-success' ====== -->
+                    <!-- =============================================================== -->
+                    <button type="submit" class="btn btn-success ml-2"><i class="fas fa-search"></i> Consultar</button>
+                </form>
+                <a href="{{ url_for('production.export_excel', group=group_name.lower(), fecha=selected_date) }}" class="btn btn-success ml-3"><i class="fas fa-file-excel mr-1"></i> Exportar a Excel</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contenedor para la Tabla Detallada -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="table-container">
+                <h4 class="mb-3">Datos Detallados por Hora</h4>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="thead-light text-center">
+                            <tr>
+                                <th rowspan="2" class="align-middle">Área</th>
+                                {% for turno in nombres_turnos %}<th colspan="{{ horas_turno[turno]|length + 3 }}">{{ turno }}</th>{% endfor %}
+                                <th colspan="3">Totales del Día</th>
+                            </tr>
+                            <tr>
+                                {% for turno in nombres_turnos %}
+                                    <th>Pronóstico</th>
+                                    {% for hora in horas_turno[turno] %}<th>{{ hora }}</th>{% endfor %}
+                                    <th>Total Turno</th>
+                                    <th>Eficiencia</th>
+                                {% endfor %}
+                                <th>Pronóstico</th>
+                                <th>Producido</th>
+                                <th>Eficiencia</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for area in areas %}
+                            <tr>
+                                <td><strong>{{ area }}</strong></td>
+                                {% set total_pronostico_area = namespace(value=0) %}{% set total_producido_area = namespace(value=0) %}
+                                {% for turno in nombres_turnos %}
+                                    {% set turno_data = performance_data.get(area, {}).get(turno, {}) %}
+                                    {% set pronostico = turno_data.get('pronostico') or 0 %}
+                                    {% set producido = turno_data.get('producido', 0) %}
+                                    {% set eficiencia = turno_data.get('eficiencia', 0) %}
+                                    {% set total_pronostico_area.value = total_pronostico_area.value + pronostico %}
+                                    {% set total_producido_area.value = total_producido_area.value + producido %}
+                                    <td class="text-center">{{ "{:,.0f}".format(pronostico) }}</td>
+                                    {% for hora in horas_turno[turno] %}
+                                        {% set hora_data = turno_data.get('horas', {}).get(hora, {}) %}
+                                        <td class="text-center {{ hora_data.get('class', '') }}">
+                                            {{ "{:,.0f}".format(hora_data.get('valor')) if hora_data.get('valor') is not none else '-' }}
+                                        </td>
+                                    {% endfor %}
+                                    <td class="text-center font-weight-bold">{{ "{:,.0f}".format(producido) }}</td>
+                                    <td class="text-center font-weight-bold {% if eficiencia < 80 %}text-danger{% elif eficiencia < 95 %}text-warning{% else %}text-success{% endif %}">{{ "%.1f"|format(eficiencia) }}%</td>
+                                {% endfor %}
+                                {% set eficiencia_total_area = (total_producido_area.value / total_pronostico_area.value * 100) if total_pronostico_area.value > 0 else 0 %}
+                                <td class="text-center font-weight-bold bg-light">{{ "{:,.0f}".format(total_pronostico_area.value) }}</td>
+                                <td class="text-center font-weight-bold bg-light">{{ "{:,.0f}".format(total_producido_area.value) }}</td>
+                                <td class="text-center font-weight-bold bg-light {% if eficiencia_total_area < 80 %}text-danger{% elif eficiencia_total_area < 95 %}text-warning{% else %}text-success{% endif %}">{{ "%.1f"|format(eficiencia_total_area) }}%</td>
+                            </tr>
+                            {% endfor %}
+
+                            <!-- ========================================================== -->
+                            <!-- ============== INICIO DE LA MODIFICACIÓN ================= -->
+                            <!-- ========================================================== -->
+                            
+                            <!-- Nueva Fila para Output -->
+                            <tr class="table-secondary">
+                                <td><strong>Output</strong></td>
+                                
+                                <!-- Celdas vacías para todos los detalles de los turnos -->
+                                {% set total_turn_cols = namespace(value=0) %}
+                                {% for turno in nombres_turnos %}
+                                    {% set total_turn_cols.value = total_turn_cols.value + horas_turno[turno]|length + 3 %}
+                                {% endfor %}
+                                <td colspan="{{ total_turn_cols.value }}"></td>
+                                
+                                <!-- Datos de Totales del Día para Output -->
+                                <td class="text-center font-weight-bold">{{ "{:,.0f}".format(output_data.pronostico) }}</td>
+                                <td class="text-center font-weight-bold">{{ "{:,.0f}".format(output_data.output) }}</td>
+                                {% set eficiencia_output = (output_data.output / output_data.pronostico * 100) if output_data.pronostico > 0 else 0 %}
+                                <td class="text-center font-weight-bold {% if eficiencia_output < 80 %}text-danger{% elif eficiencia_output < 95 %}text-warning{% else %}text-success{% endif %}">{{ "%.1f"|format(eficiencia_output) }}%</td>
+                            </tr>
+
+                            <!-- ========================================================== -->
+                            <!-- ================ FIN DE LA MODIFICACIÓN ================== -->
+                            <!-- ========================================================== -->
+                        </tbody>
+                        <tfoot>
+                            <!-- ========================================================== -->
+                            <!-- ============== INICIO DE LA MODIFICACIÓN ================= -->
+                            <!-- ========================================================== -->
+                            
+                            <!-- Fila de Total General CORREGIDA -->
+                            <tr class="total-general-row">
+                                <td><strong>TOTAL GENERAL</strong></td>
+                                
+                                <!-- Celda vacía que abarca todos los detalles de los turnos -->
+                                <td colspan="{{ total_turn_cols.value }}"></td>
+                                
+                                <!-- Usamos los totales ya calculados en el backend, que SÍ incluyen el Output -->
+                                <td class="text-center">{{ "{:,.0f}".format(totals.pronostico) }}</td>
+                                <td class="text-center">{{ "{:,.0f}".format(totals.producido) }}</td>
+                                <td class="text-center">{{ "%.1f"|format(totals.eficiencia) }}%</td>
+                            </tr>
+                            
+                            <!-- ========================================================== -->
+                            <!-- ================ FIN DE LA MODIFICACIÓN ================== -->
+                            <!-- ========================================================== -->
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contenedor para la Gráfica (al final) -->
+    <div class="row">
+        <div class="col-12">
+            <div class="chart-container">
+                <h4 class="mb-3">Resumen Gráfico por Área</h4>
+                <div style="height: 400px; position: relative;"><canvas id="productionChart"></canvas></div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+<script>
+// El script de la gráfica no necesita cambios.
+document.addEventListener('DOMContentLoaded', function() {
+    const chartData = {{ chart_data | tojson }};
+    const ctx = document.getElementById('productionChart');
+    const metaValue = {{ meta }};
+    const metaData = chartData.labels.map(() => metaValue);
+
+    if (ctx && chartData) {
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: chartData.labels,
+                datasets: [
+                    {
+                        label: 'Producido',
+                        data: chartData.producido,
+                        backgroundColor: 'rgba(36, 184, 23, 0.8)',
+                        borderColor: 'rgba(28, 140, 17, 1)',
+                        borderWidth: 1,
+                        order: 2
+                    },
+                    {
+                        label: 'Pronóstico',
+                        data: chartData.pronostico,
+                        backgroundColor: 'rgba(173, 181, 189, 0.8)',
+                        borderColor: 'rgba(108, 117, 125, 1)',
+                        borderWidth: 1,
+                        order: 2
+                    },
+                    {
+                        type: 'line',
+                        label: 'Meta',
+                        data: metaData,
+                        borderColor: 'rgb(255, 99, 132)',
+                        borderWidth: 3,
+                        fill: false,
+                        pointRadius: 0,
+                        borderDash: [5, 5],
+                        order: 1,
+                        plugins: { datalabels: { display: function(context) { return context.dataset.label !== 'Meta'; } } }
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Unidades' }
+                    },
+                    x: {
+                        title: { display: true, text: 'Áreas de Producción' }
+                    }
+                },
+                plugins: {
+                    datalabels: {
+                        anchor: 'end',
+                        align: 'start',
+                        color: '#222',
+                        font: { weight: 'bold', size: 14 },
+                        formatter: Math.round,
+                        display: function(context) {
+                            // Solo mostrar datalabels en las barras, no en la línea de meta
+                            return context.dataset.label !== 'Meta';
+                        }
+                    },
+                    title: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            footer: function(tooltipItems) {
+                                const formattedMeta = metaValue.toLocaleString('es-MX');
+                                return 'Meta Diaria: ' + formattedMeta;
+                            }
+                        }
+                    }
+                }
+            },
+            plugins: [ChartDataLabels]
+        });
+    }
+});
+</script>
+{% endblock %}

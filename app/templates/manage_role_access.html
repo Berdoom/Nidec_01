@@ -1,0 +1,50 @@
+{% extends "layout.html" %}
+
+{% block title %}Gestionar Acceso para Rol: {{ rol.nombre }}{% endblock %}
+
+{% block page_header %}Gestionar Acceso para Rol: {{ rol.nombre }}{% endblock %}
+
+{% block content %}
+<div class="content-section">
+    <div class="card">
+        <div class="card-body">
+            <p class="text-muted">
+                Selecciona a qué grupos de datos tendrán acceso los usuarios con el rol <strong>{{ rol.nombre }}</strong>.
+                <br>
+                Un rol siempre tendrá acceso a sus propios datos, aunque no esté marcado.
+            </p>
+
+            <form method="POST" action="{{ url_for('admin.manage_role_access', role_id=rol.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
+                
+                <h5 class="mt-4">Grupos de Datos Visibles</h5>
+                <hr>
+
+                <div class="form-group">
+                    {# CORRECCIÓN: Iteramos sobre 'all_data_groups', la variable correcta del backend #}
+                    {% for data_group in all_data_groups %}
+                        {# No mostramos la opción para el mismo rol que estamos editando #}
+                        {% if data_group.id != rol.id %}
+                            <div class="custom-control custom-checkbox my-2">
+                                <input type="checkbox" class="custom-control-input" 
+                                       id="role-{{ data_group.id }}" 
+                                       name="viewable_roles" 
+                                       value="{{ data_group.id }}"
+                                       {% if data_group in rol.viewable_roles %}checked{% endif %}>
+                                <label class="custom-control-label" for="role-{{ data_group.id }}">{{ data_group.nombre }}</label>
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <p>No hay otros grupos de datos disponibles para asignar.</p>
+                    {% endfor %}
+                </div>
+
+                <div class="form-group mt-4">
+                    <a href="{{ url_for('admin.manage_roles') }}" class="btn btn-secondary">Cancelar y Volver</a>
+                    <button type="submit" class="btn btn-success"><i class="fas fa-save mr-2"></i>Guardar Cambios de Acceso</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

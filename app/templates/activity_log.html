@@ -1,0 +1,150 @@
+{% extends "layout.html" %}
+
+{% block title %}Log de Actividad{% endblock %}
+{% block page_header %}Log de Actividad del Sistema{% endblock %}
+
+{% block content %}
+<div class="content-section mb-4">
+    <h4 class="mb-3"><i class="fas fa-filter mr-2"></i>Filtrar Log de Actividad</h4>
+    <form method="GET" action="{{ url_for('admin.activity_log') }}">
+        <div class="form-row">
+            <div class="form-group col-md-3">
+                <label for="fecha_inicio">Desde:</label>
+                <input type="date" class="form-control" id="fecha_inicio" name="fecha_inicio" value="{{ filtros.get('fecha_inicio', '') }}">
+            </div>
+            <div class="form-group col-md-3">
+                <label for="fecha_fin">Hasta:</label>
+                <input type="date" class="form-control" id="fecha_fin" name="fecha_fin" value="{{ filtros.get('fecha_fin', '') }}">
+            </div>
+            <div class="form-group col-md-3">
+                <label for="usuario">Usuario:</label>
+                <input type="text" class="form-control" id="usuario" name="usuario" placeholder="Buscar por usuario..." value="{{ filtros.get('usuario', '') }}">
+            </div>
+            <div class="form-group col-md-3">
+                <label for="area_grupo">Área/Grupo:</label>
+                <select id="area_grupo" name="area_grupo" class="form-control">
+                    <option value="Todos" {% if not filtros.get('area_grupo') or filtros.get('area_grupo') == 'Todos' %}selected{% endif %}>Todos</option>
+                    <option value="IHP" {% if filtros.get('area_grupo') == 'IHP' %}selected{% endif %}>IHP</option>
+                    <option value="FHP" {% if filtros.get('area_grupo') == 'FHP' %}selected{% endif %}>FHP</option>
+                    <option value="ADMIN" {% if filtros.get('area_grupo') == 'ADMIN' %}selected{% endif %}>Admin</option>
+                    <option value="Sistema" {% if filtros.get('area_grupo') == 'Sistema' %}selected{% endif %}>Sistema</option>
+                </select>
+            </div>
+            <div class="form-group col-md-3">
+                <label for="category">Categoría:</label>
+                <select id="category" name="category" class="form-control">
+                    <option value="Todos" {% if not filtros.get('category') or filtros.get('category') == 'Todos' %}selected{% endif %}>Todas</option>
+                    {% for cat in log_categories %}
+                    <option value="{{ cat }}" {% if filtros.get('category') == cat %}selected{% endif %}>{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group col-md-3">
+                <label for="severity">Severidad:</label>
+                <select id="severity" name="severity" class="form-control">
+                    <option value="Todos" {% if not filtros.get('severity') or filtros.get('severity') == 'Todos' %}selected{% endif %}>Todas</option>
+                     {% for sev in log_severities %}
+                    <option value="{{ sev }}" {% if filtros.get('severity') == sev %}selected{% endif %}>{{ sev }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="form-row align-items-end">
+            <div class="form-group col-md-12 text-right">
+                <a href="{{ url_for('admin.activity_log', limpiar=1) }}" class="btn btn-secondary">Limpiar Filtros</a>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-search mr-1"></i> Filtrar</button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="content-section">
+    <p class="text-muted">
+        Esta página muestra un registro de las acciones importantes realizadas en la aplicación. Se muestran los últimos 500 registros que coinciden con los filtros. Las horas se muestran en tu zona horaria local.
+    </p>
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead class="thead-dark bg-success" style="background-color: #218838 !important;">
+                <tr>
+                    <th style="width: 5%;"></th>
+                    <th style="width: 15%;">Fecha y Hora</th>
+                    <th style="width: 10%;">Usuario</th>
+                    <th style="width: 10%;">Área/Grupo</th>
+                    <th style="width: 10%;">Detalles</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log, user in logs %}
+                <tr>
+                    <td class="text-center">
+                        {% if log.category == 'Autenticación' %}<i class="fas fa-sign-in-alt text-primary" title="Autenticación"></i>
+                        {% elif log.category == 'Seguridad' %}<i class="fas fa-user-shield text-danger" title="Seguridad"></i>
+                        {% elif log.category == 'Datos' %}<i class="fas fa-database text-success" title="Datos"></i>
+                        {% else %}<i class="fas fa-info-circle text-muted" title="General"></i>
+                        {% endif %}
+                    </td>
+                    <td class="local-datetime" data-utc-date="{{ log.timestamp.isoformat() }}Z">Cargando...</td>
+                    <td>
+                        {% if log.username %}<span class="badge badge-success">{{ log.username }}</span>
+                        {% else %}<span class="badge badge-secondary">Sistema</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ log.area_grupo or 'N/A' }}</td>
+                    <td>
+                        <button class="btn btn-sm btn-success" data-toggle="modal" data-target="#detailsModal{{ log.id }}">Ver más</button>
+                        <!-- Modal -->
+                        <div class="modal fade" id="detailsModal{{ log.id }}" tabindex="-1" role="dialog" aria-labelledby="detailsModalLabel{{ log.id }}" aria-hidden="true">
+                          <div class="modal-dialog modal-dialog-centered" role="document">
+                            <div class="modal-content">
+                              <div class="modal-header bg-success text-white">
+                                <h5 class="modal-title" id="detailsModalLabel{{ log.id }}">Detalles del Log</h5>
+                                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                                  <span aria-hidden="true">&times;</span>
+                                </button>
+                              </div>
+                              <div class="modal-body">
+                                <strong>Fecha y Hora:</strong> <span class="local-datetime" data-utc-date="{{ log.timestamp.isoformat() }}Z">Cargando...</span><br>
+                                <strong>Usuario:</strong> {{ log.username or 'Sistema' }}<br>
+                                <strong>Nombre completo:</strong> {{ user.nombre_completo or 'N/A' }}<br>
+                                <strong>Área/Grupo:</strong> {{ log.area_grupo or 'N/A' }}<br>
+                                <strong>Acción:</strong> {{ log.action }}<br>
+                                <strong>Severidad:</strong> {{ log.severity }}<br>
+                                <strong>Categoría:</strong> {{ log.category }}<br>
+                                <strong>IP:</strong> {{ log.ip_address }}<br>
+                                <strong>Turno:</strong> {% if user and user.turno %}{{ user.turno.nombre }}{% else %}N/A{% endif %}<br>
+                                <hr>
+                                <strong>Detalles:</strong><br>
+                                <pre style="white-space: pre-wrap; word-break: break-word; background: #e9fbe5; border-radius: 6px; padding: 1em;">{{ log.details or '-' }}</pre>
+                              </div>
+                              <div class="modal-footer">
+                                <button type="button" class="btn btn-outline-success" data-dismiss="modal">Cerrar</button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" class="text-center">No hay registros de actividad que coincidan con los filtros aplicados.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dateCells = document.querySelectorAll('.local-datetime');
+    dateCells.forEach(cell => {
+        const utcDateString = cell.dataset.utcDate;
+        if (utcDateString) {
+            const date = new Date(utcDateString);
+            const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+            cell.textContent = date.toLocaleString('sv-SE', options);
+        }
+    });
+});
+</script>
+{% endblock %}

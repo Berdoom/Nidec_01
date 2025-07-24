@@ -1,0 +1,133 @@
+/* ==========================================================================
+   ESTILOS DEDICADOS PARA LOS DASHBOARDS (DISEÑO 2024 - VERSIÓN CORREGIDA)
+   ========================================================================== */
+
+/* --- 1. Estilos Base y Encabezado de Filtros --- */
+.dashboard-header .form-inline {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+.dashboard-header .d-lg-flex {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+/* --- 2. Vista Móvil: Tabla de Resumen de Eficiencia (Estilos Base) --- */
+.mobile-summary-table {
+    border-collapse: separate;
+    border-spacing: 0 4px;
+}
+.mobile-summary-table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    padding: 0.75rem;
+}
+.mobile-summary-table td {
+    padding: 0.75rem;
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: white;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+    border: none;
+}
+.mobile-summary-table .area-name-cell {
+    background-color: #ffffff;
+    color: var(--color-text-dark);
+    font-weight: 600;
+    text-align: left;
+    text-shadow: none;
+    border: 1px solid var(--color-border);
+}
+
+/* Colores sólidos para las celdas de eficiencia */
+.mobile-summary-table .eff-neutral { background-color: #adb5bd; }
+.mobile-summary-table .eff-red { background-color: var(--color-kpi-red); }
+.mobile-summary-table .eff-yellow { background-color: var(--color-kpi-yellow); }
+.mobile-summary-table .eff-green { background-color: var(--color-kpi-green); }
+
+/* --- 3. Aviso para Girar el Dispositivo --- */
+.rotate-prompt-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 3rem;
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 12px;
+    min-height: 250px;
+    text-align: center;
+    margin-top: 2rem;
+}
+.phone-icon {
+    font-size: 3.5rem;
+    color: #ced4da;
+    margin-bottom: 1.5rem;
+    animation: rotate-animation 2.5s ease-in-out infinite;
+}
+.rotate-prompt-container span {
+    font-size: 1.1rem;
+    color: var(--color-text-muted);
+    max-width: 250px;
+}
+@keyframes rotate-animation {
+    0% { transform: rotate(0deg); } 25% { transform: rotate(90deg); }
+    75% { transform: rotate(90deg); } 100% { transform: rotate(0deg); }
+}
+
+/* ======================================================================= */
+/* ====== INICIO: LÓGICA RESPONSIVE CORREGIDA PARA MOSTRAR TABLA ========= */
+/* ======================================================================= */
+
+/* NOTA: Estas reglas se aplican a pantallas de hasta 991.98px de ancho (móviles y tablets pequeñas) */
+@media (max-width: 991.98px) {
+
+    /* Por defecto (orientación vertical), mostramos la vista móvil y ocultamos la de escritorio. */
+    .dashboard-page .desktop-view {
+        display: none;
+    }
+    .dashboard-page .mobile-view {
+        display: block;
+    }
+
+    /* PERO, si el dispositivo está en horizontal (landscape), invertimos la visibilidad. */
+    @media (orientation: landscape) {
+        
+        /* Mostramos la tabla de escritorio detallada.
+           La clase .table-responsive de Bootstrap le añadirá automáticamente un scroll horizontal si no cabe. */
+        .dashboard-page .desktop-view {
+            display: block;
+        }
+
+        /* Y ocultamos la vista móvil simple (incluyendo el aviso de "Gira tu dispositivo"). */
+        .dashboard-page .mobile-view {
+            display: none;
+        }
+    }
+
+    /* Corregir disposición de botones en formularios y acciones en móvil */
+    .dashboard-header .d-lg-flex,
+    .dashboard-header .form-inline {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 0.5rem;
+    }
+    .dashboard-header .form-inline > *,
+    .dashboard-header .d-lg-flex > a,
+    .dashboard-header .d-lg-flex > form {
+        width: 100% !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+    .dashboard-header .form-inline button,
+    .dashboard-header .form-inline a {
+        width: 100%;
+        margin-top: 0.25rem;
+        margin-bottom: 0.25rem;
+    }
+    .dashboard-header .d-lg-flex > a {
+        margin-top: 0.25rem;
+        margin-bottom: 0.25rem;
+    }
+}

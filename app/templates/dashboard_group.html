@@ -1,0 +1,90 @@
+{% extends "layout.html" %}
+{% block title %}Dashboard {{ group_name }}{% endblock %}
+{% block page_header %}Dashboard de Grupo: {{ group_name }}{% endblock %}
+
+{% block styles %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-page">
+    <div class="content-section mb-4 dashboard-header">
+        <div class="row align-items-center">
+            <div class="col-lg-6 col-md-12 mb-3 mb-lg-0">
+                <h4 class="mb-0">Resumen del Día: <strong>{{ selected_date }}</strong></h4>
+            </div>
+            <div class="col-lg-6 col-md-12">
+                <div class="d-lg-flex justify-content-lg-end align-items-center">
+                    <form method="GET" action="{{ url_for('production.dashboard_group', group=group_name.lower()) }}" class="form-inline mb-2 mb-lg-0">
+                        <div class="form-group mb-2 mb-sm-0"><label for="fecha" class="mr-2 font-weight-bold">Cambiar Fecha:</label><input type="date" class="form-control" id="fecha" name="fecha" value="{{ selected_date }}"></div>
+                        <button type="submit" class="btn btn-success ml-2"><i class="fas fa-search"></i> Consultar</button>
+                        <a href="{{ url_for('production.dashboard_group', group=group_name.lower()) }}" class="btn btn-secondary ml-2" title="Ir al Día de Negocio Actual"><i class="fas fa-calendar-day"></i> Hoy</a>
+                    </form>
+                    <a href="{{ url_for('production.registro', group=group_name.lower(), fecha=selected_date) }}" class="btn btn-info ml-lg-3"><i class="fas fa-history mr-1"></i> Ver Registro</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row text-center mb-4">
+        <div class="col-lg-8 col-md-6 mb-4"><div class="kpi-card h-100 d-flex flex-column justify-content-center"><div class="kpi-card__wheel kpi-card__wheel--{{ summary.eficiencia|get_kpi_color }}" style="--value: {{ summary.eficiencia }}"><span class="kpi-card__value">{{ "%.1f"|format(summary.eficiencia) }}%</span></div><h5 class="mt-3">Eficiencia General del Grupo</h5><p class="text-muted">{{ summary.producido }} / {{ summary.pronostico }}</p></div></div>
+        <div class="col-lg-4 col-md-6 mb-4"><div class="kpi-card h-100 d-flex flex-column justify-content-center"><h5 class="mb-3">Tendencia vs. Día Anterior</h5>{% if summary.trend == 'up' %}<div class="text-success"><i class="fas fa-arrow-up fa-3x"></i><p class="font-weight-bold mt-2">Mejora</p></div><p class="text-muted mt-1 small">La producción aumentó.</p>{% elif summary.trend == 'down' %}<div class="text-danger"><i class="fas fa-arrow-down fa-3x"></i><p class="font-weight-bold mt-2">Descenso</p></div><p class="text-muted mt-1 small">La producción disminuyó.</p>{% else %}<div class="text-secondary"><i class="fas fa-arrows-alt-h fa-3x"></i><p class="font-weight-bold mt-2">Estable</p></div><p class="text-muted mt-1 small">La producción se mantuvo.</p>{% endif %}</div></div>
+    </div>
+
+    <div class="content-section">
+        <h3 class="mb-4 font-weight-bold">Desglose de Producción por Área y Turno</h3>
+        <div class="table-responsive desktop-view">
+             <table class="table table-bordered table-hover">
+                <thead class="text-center thead-light">
+                    <tr><th rowspan="2" class="align-middle">Área</th>{% for turno in nombres_turnos %}<th colspan="{{ horas_turno[turno]|length + 2 }}">{{ turno }}</th>{% endfor %}<th rowspan="2" class="align-middle">Pronóstico<br>Total</th><th rowspan="2" class="align-middle">Total<br>Producido</th></tr>
+                    <tr>{% for turno in nombres_turnos %}<th>Pronóstico</th>{% for hora in horas_turno[turno] %}<th>{{ hora }}</th>{% endfor %}<th>Total Turno</th>{% endfor %}</tr>
+                </thead>
+                <tbody>
+                    {% for area in areas %}
+                    <tr>
+                        <td>{{ area }}</td>
+                        {% set total_pronostico_area = namespace(value=0) %}{% set total_producido_area = namespace(value=0) %}
+                        {% for turno in nombres_turnos %}
+                            {% set turno_data = performance_data.get(area, {}).get(turno, {}) %}{% set pronostico = turno_data.get('pronostico') %}{% set producido_turno = turno_data.get('producido', 0) %}
+                            {% if pronostico is not none %}{% set total_pronostico_area.value = total_pronostico_area.value + pronostico %}{% endif %}
+                            {% set total_producido_area.value = total_producido_area.value + producido_turno %}
+                            <td class="text-center">{{ "{:,.0f}".format(pronostico or 0) }}</td>
+                            {% for hora in horas_turno[turno] %}{% set hora_data = turno_data.get('horas', {}).get(hora, {}) %}<td class="text-center {{ hora_data.get('class', '') }}">{{ "{:,.0f}".format(hora_data.get('valor')) if hora_data.get('valor') is not none else '-' }}</td>{% endfor %}
+                            <td class="text-center font-weight-bold">{{ "{:,.0f}".format(producido_turno) }}</td>
+                        {% endfor %}
+                        <td class="text-center font-weight-bold">{{ "{:,.0f}".format(total_pronostico_area.value) }}</td><td class="text-center font-weight-bold">{{ "{:,.0f}".format(total_producido_area.value) }}</td>
+                    </tr>
+                    {% endfor %}
+                    {% set total_columns_for_turns = namespace(value=0) %}{% for turno in nombres_turnos %}{% set total_columns_for_turns.value = total_columns_for_turns.value + horas_turno[turno]|length + 2 %}{% endfor %}
+                    <tr class="table-light"><td><strong>Output</strong></td><td colspan="{{ total_columns_for_turns.value }}" class="text-center align-middle font-italic text-muted"></td><td class="text-center font-weight-bold">{{ "{:,.0f}".format(output_data.pronostico) }}</td><td class="text-center font-weight-bold">{{ "{:,.0f}".format(output_data.output) }}</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="mobile-view">
+            <h5 class="mb-3 text-center">Resumen de Eficiencia por Turno</h5>
+            <table class="table mobile-summary-table text-center">
+                <thead class="thead-light"><tr><th>Área</th>{% for turno in nombres_turnos %}<th>{{ turno.replace('Turno ', '') }}</th>{% endfor %}</tr></thead>
+                <tbody>
+                    {% for area in areas %}
+                    <tr>
+                        <td class="area-name-cell">{{ area }}</td>
+                        {% for turno in nombres_turnos %}
+                            {% set turno_data = performance_data.get(area, {}).get(turno, {}) %}{% set pronostico = turno_data.get('pronostico') %}{% set eficiencia = turno_data.get('eficiencia', 0) %}
+                            {% if pronostico is not none and pronostico > 0 %}<td class="efficiency-cell eff-{{ eficiencia|get_kpi_color }}">{{ "%.0f"|format(eficiencia) }}%</td>
+                            {% else %}<td class="efficiency-cell eff-neutral">-</td>{% endif %}
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div class="rotate-prompt-container">
+                <i class="fas fa-mobile-alt phone-icon"></i>
+                <span>Gira tu dispositivo para ver la tabla detallada.</span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% endblock %}

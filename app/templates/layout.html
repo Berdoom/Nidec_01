@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Producción Nidec{% endblock %}</title>
+    
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+
+    {% block styles %}{% endblock %}
+</head>
+<body>
+    {% set page_title %}{% block page_header %}Panel Principal{% endblock %}{% endset %}
+    
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <img src="{{ url_for('static', filename='img/logo verde.png') }}" alt="Nidec Logo" class="sidebar-logo">
+            <button class="sidebar-close" id="sidebarClose"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="sidebar-user">
+            <div class="user-info">
+                <div class="user-avatar">
+                    <i class="fas fa-user"></i>
+                </div>
+                <div class="user-details">
+                    <strong>{{ current_user.nombre_completo or 'Usuario' }}</strong>
+                    <small>{{ current_user.role.nombre or 'Rol' }}</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="sidebar-menu">
+
+            {% if 'dashboard.view.admin' in permissions %}
+            <div class="menu-section">
+                <h6 class="menu-section-title">ADMINISTRACIÓN</h6>
+                <a href="{{ url_for('production.dashboard_admin') }}" class="menu-item {% if request.path == url_for('production.dashboard_admin') %}active{% endif %}">
+                    <i class="fas fa-tachometer-alt fa-fw"></i>
+                    <span>Dashboard Admin</span>
+                </a>
+            </div>
+            {% endif %}
+
+            {% if ('dashboard.view.group' in permissions and ('IHP' in viewable_roles or 'FHP' in viewable_roles)) or 'reportes.view' in permissions %}
+            <div class="menu-section">
+                <h6 class="menu-section-title">PRODUCCIÓN</h6>
+                
+                {# ========================================================== #}
+                {# ============== INICIO DE LA CORRECCIÓN =================== #}
+                {# ========================================================== #}
+                
+                {# Condición para mostrar el menú de IHP #}
+                {% if 'IHP' in viewable_roles %}
+                <a href="#" class="menu-item menu-dropdown" data-target="#submenu-ihp">
+                    <i class="fas fa-industry fa-fw"></i><span>IHP</span><i class="fas fa-chevron-down dropdown-icon"></i>
+                </a>
+                <div class="submenu" id="submenu-ihp">
+                    {% if 'dashboard.view.group' in permissions %}<a href="{{ url_for('production.dashboard_group', group='ihp') }}" class="submenu-item">Dashboard</a>{% endif %}
+                    {% if 'captura.access' in permissions %}<a href="{{ url_for('production.captura', group='ihp') }}" class="submenu-item">Captura</a>{% endif %}
+                    {% if 'registro.view' in permissions %}<a href="{{ url_for('production.registro', group='ihp') }}" class="submenu-item">Registro</a>{% endif %}
+                </div>
+                {% endif %}
+
+                {# Condición para mostrar el menú de FHP #}
+                {% if 'FHP' in viewable_roles %}
+                <a href="#" class="menu-item menu-dropdown" data-target="#submenu-fhp">
+                    <i class="fas fa-solar-panel fa-fw"></i><span>FHP</span><i class="fas fa-chevron-down dropdown-icon"></i>
+                </a>
+                <div class="submenu" id="submenu-fhp">
+                    {% if 'dashboard.view.group' in permissions %}<a href="{{ url_for('production.dashboard_group', group='fhp') }}" class="submenu-item">Dashboard</a>{% endif %}
+                    {% if 'captura.access' in permissions %}<a href="{{ url_for('production.captura', group='fhp') }}" class="submenu-item">Captura</a>{% endif %}
+                    {% if 'registro.view' in permissions %}<a href="{{ url_for('production.registro', group='fhp') }}" class="submenu-item">Registro</a>{% endif %}
+                </div>
+                {% endif %}
+
+                {# ========================================================== #}
+                {# ================= FIN DE LA CORRECCIÓN =================== #}
+                {# ========================================================== #}
+                
+                {% if 'reportes.view' in permissions %}
+                <a href="{{ url_for('production.reportes') }}" class="menu-item {% if 'reportes' in request.path %}active{% endif %}">
+                    <i class="fas fa-chart-bar fa-fw"></i>
+                    <span>Reportes</span>
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+            
+            {% if ('programa_lm.view' in permissions or 'PROGRAMA_LM' in viewable_roles) or ('programa_rotores.view' in permissions or 'PROGRAMA_ROTORES' in viewable_roles) %}
+            <div class="menu-section">
+                <h6 class="menu-section-title">GESTIÓN</h6>
+                {% if 'programa_lm.view' in permissions or 'PROGRAMA_LM' in viewable_roles %}
+                <a href="{{ url_for('lm.programa_lm') }}" class="menu-item {% if 'programa_lm' in request.path %}active{% endif %}">
+                    <i class="fas fa-tasks fa-fw"></i>
+                    <span>Programa LM</span>
+                </a>
+                {% endif %}
+                
+                {% if 'programa_rotores.view' in permissions or 'PROGRAMA_ROTORES' in viewable_roles %}
+                <a href="{{ url_for('rotores.programa_rotores') }}" class="menu-item {% if 'programa_rotores' in request.path %}active{% endif %}">
+                    <i class="fas fa-cogs fa-fw"></i>
+                    <span>Programa Rotores</span>
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if 'users.manage' in permissions or 'roles.manage' in permissions or 'logs.view' in permissions %}
+            <div class="menu-section">
+                <h6 class="menu-section-title">HERRAMIENTAS</h6>
+                 <a href="#" class="menu-item menu-dropdown" data-target="#submenu-tools"><i class="fas fa-cogs fa-fw"></i><span>Herramientas Admin</span><i class="fas fa-chevron-down dropdown-icon"></i></a>
+                    <div class="submenu" id="submenu-tools">
+                        {% if 'users.manage' in permissions %}<a href="{{ url_for('admin.manage_users') }}" class="submenu-item">Usuarios</a>{% endif %}
+                        {% if 'roles.manage' in permissions %}<a href="{{ url_for('admin.manage_roles') }}" class="submenu-item">Roles</a>{% endif %}
+                        {% if 'users.manage' in permissions %}<a href="{{ url_for('admin.manage_turnos') }}" class="submenu-item">Turnos</a>{% endif %}
+                        {% if 'logs.view' in permissions %}<a href="{{ url_for('admin.activity_log') }}" class="submenu-item">Log de Actividad</a>{% endif %}
+                    </div>
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="sidebar-footer">
+            <a href="{{ url_for('auth.logout') }}" class="menu-item logout-item">
+                <i class="fas fa-sign-out-alt fa-fw"></i>
+                <span>Cerrar Sesión</span>
+            </a>
+        </div>
+    </nav>
+    
+    <div class="main-content" id="mainContent">
+        <header class="top-header">
+            <div class="header-left">
+                <button class="sidebar-toggle" id="sidebarToggle"><i class="fas fa-bars"></i></button>
+                <div class="page-title">
+                    <h4>{{ page_title }}</h4>
+                </div>
+            </div>
+            <div class="header-right">
+                <a href="{{ url_for('admin.centro_acciones') }}" class="notification-bell">
+                    <i class="fas fa-bell"></i>
+                    {% if pending_actions_count > 0 %}<span class="badge badge-danger notification-badge">{{ pending_actions_count }}</span>{% endif %}
+                </a>
+                <div class="user-menu">
+                    <span class="user-info">
+                        <strong>{{ current_user.nombre_completo or 'Usuario' }}</strong>
+                        <i class="fas fa-user-circle ml-2" style="font-size: 1.5rem;"></i>
+                    </span>
+                </div>
+            </div>
+        </header>
+        
+        <main class="content-area">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                <div class="toast-container" style="position: fixed; top: 1.5rem; right: 1.5rem; z-index: 2000;">
+                    {% for category, message in messages %}
+                    <div class="toast custom-toast shadow-lg animate__animated animate__fadeInDown" role="alert" data-delay="5000" style="min-width: 320px; border-radius: 1rem; margin-bottom: 1rem; background: rgba(255,255,255,0.95);">
+                        <div class="toast-header d-flex align-items-center" style="border-radius: 1rem 1rem 0 0; background: {% if category == 'success' %}#28a745{% elif category == 'danger' %}#dc3545{% elif category == 'warning' %}#ffc107{% elif category == 'info' %}#17a2b8{% else %}#343a40{% endif %}; color: #fff;">
+                            <span class="mr-2">
+                                {% if category == 'success' %}<i class="fas fa-check-circle"></i>{% elif category == 'danger' %}<i class="fas fa-times-circle"></i>{% elif category == 'warning' %}<i class="fas fa-exclamation-triangle"></i>{% elif category == 'info' %}<i class="fas fa-info-circle"></i>{% else %}<i class="fas fa-bell"></i>{% endif %}
+                            </span>
+                            <strong class="mr-auto">{{ category|capitalize }}</strong>
+                            <button type="button" class="ml-2 mb-1 close text-white" data-dismiss="toast" aria-label="Close" style="font-size: 1.3rem;">
+                                <span aria-hidden="true">×</span>
+                            </button>
+                        </div>
+                        <div class="toast-body" style="font-size: 1.1rem; color: #222; padding: 1.1rem 1.2rem; border-radius: 0 0 1rem 1rem;">
+                            {{ message }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="{{ url_for('static', filename='js/sidebar.js') }}"></script>
+    <script>
+        $(document).ready(function() {
+            $('.toast').toast('show');
+        });
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

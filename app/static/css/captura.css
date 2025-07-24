@@ -1,0 +1,212 @@
+/* ==========================================================================
+   ESTILOS DEDICADOS PARA LA PÁGINA DE CAPTURA (DISEÑO MEJORADO)
+   ========================================================================== */
+
+/* --- 1. Lógica Responsive y Contenedores --- */
+.desktop-view { display: block; }
+.mobile-view { display: none; }
+@media (max-width: 991.98px) {
+    .desktop-view { display: none; }
+    .mobile-view { display: block; }
+}
+
+/* --- 2. Estilos Generales para Inputs (Lógica Corregida) --- */
+.capture-input {
+    width: 75px;
+    height: 38px;
+    text-align: center;
+    font-weight: 600;
+    font-size: 0.95rem;
+    border-radius: 6px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    border: 2px solid var(--color-border); 
+}
+
+/* Clases que establecen el color del borde de forma PERMANENTE */
+.capture-input.input-success {
+    border-color: var(--color-kpi-green);
+}
+.capture-input.input-warning {
+    border-color: var(--color-kpi-yellow);
+}
+
+/* El estado :focus solo añade el resplandor, sin alterar el color del borde */
+.capture-input:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(36, 184, 23, 0.2);
+}
+
+.validation-icon-container.clickable-icon {
+    cursor: pointer;
+    font-size: 1.3rem;
+    transition: transform 0.2s ease;
+}
+.validation-icon-container.clickable-icon:hover {
+    transform: scale(1.2);
+}
+
+/* --- 3. Vista de Escritorio: Tabla Mejorada --- */
+.captura-table-desktop th {
+    text-align: center;
+    vertical-align: middle;
+    padding: 0.75rem;
+    background-color: #f8f9fa;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+.captura-table-desktop td {
+    padding: 0.4rem;
+    vertical-align: middle;
+}
+.captura-table-desktop .area-name-cell {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background-color: #f0f2f5;
+    font-weight: 600;
+    text-align: left;
+    padding-left: 1rem;
+    border-right: 2px solid #dee2e6;
+}
+.captura-table-desktop th.turno-separator {
+    background-color: #e9ecef;
+    border-left: 1px solid #d1d9e1 !important;
+}
+.captura-table-desktop td.turno-separator {
+    border-left: 1px solid #e9ecef !important;
+}
+.captura-table-desktop .total-column {
+    background-color: #f8f9fa;
+    font-weight: 700;
+}
+
+/* --- 4. Vista Móvil: Acordeón Pulido --- */
+.captura-accordion .card {
+    margin-bottom: 0.5rem;
+    border: 1px solid var(--color-border);
+    border-radius: 8px !important;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    overflow: hidden;
+}
+.captura-accordion .card-header {
+    padding: 0;
+    background-color: #fff;
+    border-bottom: 1px solid var(--color-border);
+}
+.captura-accordion .card-header .btn-link {
+    width: 100%;
+    text-align: left;
+    padding: 1rem 1.25rem;
+    color: var(--color-text-dark);
+    font-weight: 600;
+    font-size: 1.1rem;
+    text-decoration: none;
+    transition: background-color 0.2s ease;
+}
+.captura-accordion .card-header .btn-link:hover {
+    background-color: #f8f9fa;
+}
+.captura-accordion .card-body {
+    padding: 1.25rem;
+}
+.turno-section-mobile {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid #e9ecef;
+}
+.turno-section-mobile:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+.turno-section-mobile h6 {
+    font-weight: 700;
+    color: var(--nidec-green-dark);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid #e9ecef;
+}
+.input-row-mobile {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+.input-row-mobile label {
+    font-weight: 500;
+    color: #6c757d;
+    margin: 0;
+}
+.input-row-mobile .capture-input {
+    width: 110px;
+}
+.turno-totals-mobile {
+    margin-top: 1.25rem;
+    padding-top: 1.25rem;
+    border-top: 2px dashed var(--color-border);
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+/* --- 5. Botones de Guardado Fijos (Lógica Corregida) --- */
+.save-fab,
+.save-button-container {
+    display: none;
+}
+
+.save-fab {
+    position: fixed;
+    width: 60px;
+    height: 60px;
+    bottom: 30px;
+    right: 30px;
+    background-color: var(--nidec-green);
+    color: #FFF;
+    border-radius: 50%;
+    text-align: center;
+    font-size: 24px;
+    box-shadow: 2px 2px 8px rgba(0,0,0,0.25);
+    z-index: 1000;
+    border: none;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+.save-fab:hover {
+    background-color: var(--nidec-green-dark);
+    transform: scale(1.05);
+    color: #FFF;
+}
+
+.save-button-container {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background-color: rgba(255, 255, 255, 0.95);
+    border-top: 1px solid var(--color-border);
+    padding: 0.75rem 1rem;
+    box-shadow: 0 -4px 12px rgba(0,0,0,0.08);
+    z-index: 1000;
+}
+.save-button-container .btn {
+    width: 100%;
+    font-size: 1.1rem;
+    padding: 0.75rem;
+}
+
+@media (max-width: 991.98px) {
+    .save-button-container {
+        display: block;
+    }
+    main.content-area {
+        padding-bottom: 100px;
+    }
+}
+
+@media (min-width: 992px) {
+    .save-fab {
+        display: flex;
+    }
+}

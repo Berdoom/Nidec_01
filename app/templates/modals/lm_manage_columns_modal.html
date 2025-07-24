@@ -1,0 +1,49 @@
+<div class="modal fade" id="manageColumnsModal" tabindex="-1" role="dialog" aria-labelledby="manageColumnsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="manageColumnsModalLabel">Gestionar Columnas</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">×</span>
+                </button>
+            </div>
+            <form action="{{ url_for('lm.manage_columns') }}" method="POST">
+                <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
+                    <p class="text-muted">Ajusta los anchos de las columnas existentes o añade una nueva.</p>
+                    
+                    {% for col in columnas %}
+                    <div class="form-group row">
+                        <label class="col-sm-4 col-form-label d-flex align-items-center">
+                            {{ col.nombre }}
+                            <a href="#" class="ml-auto text-danger" onclick="event.preventDefault(); if(confirm('¿Seguro que quieres eliminar la columna \'{{ col.nombre }}\'? Se borrarán todos sus datos.')) document.getElementById('delete-col-{{ col.id }}').submit();" title="Eliminar Columna">
+                                <i class="fas fa-trash-alt"></i>
+                            </a>
+                        </label>
+                        <div class="col-sm-8">
+                            <input type="number" class="form-control" name="width_{{ col.id }}" value="{{ col.ancho_columna }}" placeholder="Ancho en píxeles">
+                        </div>
+                    </div>
+                    {% endfor %}
+
+                    <hr>
+                    <h5 class="mt-4">Añadir Nueva Columna</h5>
+                    <div class="form-group">
+                        <label for="nombre_nueva_columna">Nombre de la Nueva Columna</label>
+                        <input type="text" class="form-control" id="nombre_nueva_columna" name="nombre_nueva_columna" placeholder="Escribe el nombre aquí...">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                </div>
+            </form>
+            <!-- Formularios ocultos para eliminar columnas -->
+            {% for col in columnas %}
+            <form id="delete-col-{{ col.id }}" action="{{ url_for('lm.delete_column_lm', columna_id=col.id) }}" method="POST" style="display: none;">
+                <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
+            </form>
+            {% endfor %}
+        </div>
+    </div>
+</div>

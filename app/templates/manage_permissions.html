@@ -1,0 +1,49 @@
+{% extends "layout.html" %}
+
+{% block title %}Gestionar Permisos de Rol{% endblock %}
+{% block page_header %}Gestionar Permisos para el Rol: {{ rol.nombre }}{% endblock %}
+
+{% block content %}
+<div class="content-section">
+    <form method="POST" action="{{ url_for('admin.manage_permissions', role_id=rol.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
+        <p class="text-muted">Selecciona los permisos que tendrán los usuarios con el rol <strong>{{ rol.nombre }}</strong>.</p>
+        
+        <div class="card mt-4">
+            <div class="card-body">
+                <div class="row">
+                    {% for permission in all_permissions %}
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="custom-control custom-checkbox">
+                            <input type="checkbox" class="custom-control-input" 
+                                   id="perm_{{ permission.id }}" 
+                                   name="permissions" 
+                                   value="{{ permission.id }}" 
+                                   {% if permission in rol.permissions %}checked{% endif %}
+                                   {# Los permisos del rol ADMIN no se pueden cambiar #}
+                                   {% if rol.nombre == 'ADMIN' %}disabled{% endif %}>
+                            <label class="custom-control-label" for="perm_{{ permission.id }}">
+                                <strong>{{ permission.name }}</strong>
+                                <br>
+                                <small class="text-muted">{{ permission.description }}</small>
+                            </label>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <hr>
+        <div class="text-right">
+            <a href="{{ url_for('admin.manage_roles') }}" class="btn btn-secondary">Volver a Roles</a>
+            {# El botón de guardar no aparece para el rol ADMIN #}
+            {% if rol.nombre != 'ADMIN' %}
+            <button type="submit" class="btn btn-success">
+                <i class="fas fa-save mr-1"></i> Guardar Permisos
+            </button>
+            {% endif %}
+        </div>
+    </form>
+</div>
+{% endblock %}

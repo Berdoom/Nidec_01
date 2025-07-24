@@ -1,0 +1,182 @@
+/* ==========================================================================
+   ESTILOS PARA EL NUEVO DISEÑO DE "PROGRAMA LM" (VERSIÓN FINAL Y ROBUSTA)
+   ========================================================================== */
+
+/* --- Barra de Comandos (Command Bar) --- */
+.command-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+.command-bar-left h4 {
+    font-weight: 600;
+    font-size: 1.25rem;
+    margin: 0;
+}
+.command-bar-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* --- Estilos de la Tabla --- */
+.lm-table {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+}
+.lm-table th, .lm-table td {
+    padding: 0.75rem;
+    vertical-align: middle;
+    white-space: normal;
+    word-wrap: break-word;
+}
+.lm-table tbody tr:hover {
+    background-color: #f8f9fa;
+}
+.lm-table tr.duplicate-row {
+    border-left: 4px solid #f59e0b;
+}
+
+/* --- Estilos para Celdas Editables --- */
+.lm-table .editable-cell[contenteditable="true"]:hover {
+    background-color: #f0f8ff;
+    cursor: cell;
+}
+.lm-table .editable-cell[contenteditable="true"]:focus {
+    background-color: #eef5ff;
+    outline: 2px solid #4a90e2;
+    box-shadow: 0 0 5px rgba(74, 144, 226, 0.5);
+    z-index: 5;
+    position: relative;
+}
+.lm-table .editable-cell.saving {
+    animation: saving-pulse 1.5s infinite;
+}
+@keyframes saving-pulse { 50% { background-color: #fffbe6; } }
+.lm-table .editable-cell.saved-success {
+    background-color: #d4edda;
+    transition: background-color 0.3s;
+}
+.lm-table .editable-cell.saved-error {
+    background-color: #f8d7da;
+}
+
+/* --- Menú Contextual --- */
+#cell-context-menu {
+    position: fixed;
+    display: none;
+    background-color: #fff;
+    border: 1px solid #ccc;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    border-radius: 6px;
+    padding: 8px;
+    z-index: 1000;
+    width: 200px;
+}
+.context-menu-section { margin-bottom: 5px; }
+.context-menu-section-title { font-weight: bold; font-size: 0.8rem; color: #6c757d; margin-bottom: 8px; }
+.simple-palette-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.color-box { width: 100%; height: 30px; border-radius: 4px; cursor: pointer; border: 1px solid rgba(0, 0, 0, 0.1); transition: transform 0.1s ease, box-shadow 0.1s; background-color: var(--bg-color); }
+.color-box:hover { transform: scale(1.1); z-index: 10; border-color: #007bff; box-shadow: 0 0 5px rgba(0,0,0,0.3); }
+#cell-context-menu .context-divider { border-top: 1px solid #e0e0e0; margin: 8px 0; }
+#cell-context-menu .format-option, #cell-context-menu .reset-style-btn { display: flex; align-items: center; width: 100%; border: none; background: none; padding: 8px; border-radius: 4px; cursor: pointer; font-weight: 500; text-align: left; font-size: 0.9rem; }
+#cell-context-menu .format-option:hover, #cell-context-menu .reset-style-btn:hover { background-color: #e9ecef; }
+#cell-context-menu .reset-style-btn { color: #d9534f; }
+#cell-context-menu .format-option input { margin-right: 10px; }
+
+/* --- Grupo de Acciones en Hover y Columna Fija --- */
+.action-buttons-cell .action-buttons {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+    min-height: 31px;
+}
+.lm-table tbody tr:hover .action-buttons-cell .action-buttons {
+    opacity: 1;
+}
+@media (hover: none) {
+    .action-buttons-cell .action-buttons {
+        opacity: 1;
+    }
+}
+.actions-col {
+    position: -webkit-sticky;
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background-color: #ffffff;
+}
+.lm-table thead .actions-col {
+    background-color: #e9ecef;
+}
+.lm-table tbody tr:hover .actions-col {
+    background-color: #f8f9fa;
+}
+.lm-table.actions-hidden .actions-col {
+    display: none;
+}
+
+/* ==========================================================================
+   ESTILOS PARA LA VISTA DE TARJETAS EN MÓVIL
+   ========================================================================== */
+.mobile-view .lm-card {
+    margin-bottom: 1rem;
+    border-left: 4px solid var(--nidec-green);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.07);
+}
+.mobile-view .lm-card.duplicate-row {
+    border-left-color: #f59e0b;
+}
+.mobile-view .card-header strong {
+    font-size: 1.1rem;
+}
+.mobile-view .info-section p {
+    margin-bottom: 0.5rem;
+}
+.mobile-view .data-pills-section {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+.lm-mobile-data-pill {
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    background-color: #f1f3f5;
+    color: #495057;
+}
+.lm-mobile-data-pill strong {
+    color: #212529;
+}
+.lm-mobile-data-pill.pill-green { background-color: #e6f9e4; }
+.lm-mobile-data-pill.pill-red { background-color: #ffe8e8; }
+.lm-mobile-data-pill.pill-yellow { background-color: #fff8e1; }
+.mobile-view .card-footer {
+    background-color: #f8f9fa;
+}
+.mobile-view .actions-cell-container {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+@media (max-width: 767.98px) and (orientation: portrait) {
+  .desktop-view { display: none !important; }
+  .mobile-view { display: block !important; }
+}
+@media (max-width: 767.98px) and (orientation: landscape) {
+  .desktop-view { display: block !important; }
+  .mobile-view { display: none !important; }
+}

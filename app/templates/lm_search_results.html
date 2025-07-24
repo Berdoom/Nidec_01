@@ -1,0 +1,57 @@
+{% extends "layout.html" %}
+{% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/programa_lm.css') }}">{% endblock %}
+{% block title %}Resultados de Búsqueda - Programa LM{% endblock %}
+{% block page_header %}Resultados de Búsqueda Global (LM){% endblock %}
+
+{% block content %}
+<div class="content-section programa-lm-container">
+    <a href="{{ url_for('lm.programa_lm') }}" class="btn btn-secondary mb-3"><i class="fas fa-arrow-left mr-2"></i>Volver a Pendientes</a>
+    
+    <div class="card card-body mb-4">
+        <h4>Buscar en Todas las Órdenes</h4>
+        <form method="GET" action="{{ url_for('lm.search_lm') }}">
+            <div class="form-row align-items-end">
+                <div class="form-group col-md-5"><label for="wip_order_filter">Buscar por WIP Order:</label><input type="text" class="form-control" id="wip_order_filter" name="wip_order_filter" value="{{ filtros.get('wip_order_filter', '') }}" placeholder="Escribe parte del WIP Order..."></div>
+                <div class="form-group col-md-5"><label for="item_filter">Buscar por Item:</label><input type="text" class="form-control" id="item_filter" name="item_filter" value="{{ filtros.get('item_filter', '') }}" placeholder="Escribe parte del Item..."></div>
+                <div class="form-group col-md-2 d-flex" style="gap: 0.5rem;"><button type="submit" class="btn btn-primary btn-sm w-100"><i class="fas fa-search"></i> Buscar</button><a href="{{ url_for('lm.search_lm') }}" class="btn btn-secondary btn-sm w-100">Limpiar</a></div>
+            </div>
+        </form>
+    </div>
+
+    <h5 class="mb-3">Se encontraron {{ ordenes|length }} resultados.</h5>
+
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover lm-table">
+            <thead class="thead-light">
+                <tr>
+                    <th style="width: 120px;">Estado</th>
+                    <th>WIP order</th>
+                    <th>Item</th>
+                    <th>QTY</th>
+                    {% for columna in columnas %}<th>{{ columna.nombre }}</th>{% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for orden in ordenes %}
+                <tr class="{% if orden.status == 'Aprobada' %}table-success{% endif %}">
+                    <td class="text-center align-middle">
+                        {% if orden.status == 'Pendiente' %}<span class="badge badge-warning">Pendiente</span>
+                        {% else %}<span class="badge badge-success">Aprobada</span>
+                        {% endif %}
+                    </td>
+                    <td class="align-middle font-weight-bold">{{ orden.wip_order }}</td>
+                    <td class="align-middle">{{ orden.item or '' }}</td>
+                    <td class="align-middle text-center">{{ orden.qty }}</td>
+                    {% for columna in columnas %}
+                        {% set celda_obj = datos.get((orden.id, columna.id)) %}
+                        <td class="align-middle">{{- celda_obj.valor if celda_obj else '' -}}</td>
+                    {% endfor %}
+                </tr>
+                {% else %}
+                <tr><td colspan="{{ 4 + columnas|length }}" class="text-center text-muted py-4">No se encontraron resultados para tu búsqueda. Por favor, intenta con otros términos.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

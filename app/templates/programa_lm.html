@@ -1,0 +1,225 @@
+{% extends "layout.html" %}
+{% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='css/programa_lm.css') }}">{% endblock %}
+{% block title %}Programa LM - Pendientes{% endblock %}
+{% block page_header %}Seguimiento de Órdenes de Trabajo (Pendientes){% endblock %}
+
+{% block content %}
+<div class="content-section programa-lm-container" 
+     data-csrf-token="{{ session.csrf_token }}" 
+     data-update-cell-url="{{ url_for('lm.update_cell_lm') }}"
+     data-reorder-columns-url="{{ url_for('lm.reorder_columns') }}">
+    
+    <div class="command-bar">
+        <div class="command-bar-left">
+            <h4 class="mb-0">Órdenes Pendientes</h4>
+        </div>
+        <div class="command-bar-right">
+            <button id="toggleActionsColBtn" class="btn btn-sm btn-outline-secondary" title="Ocultar/Mostrar Acciones"><i class="fas fa-eye"></i></button>
+            <button class="btn btn-sm btn-primary" style="background-color: #007bff; border-color: #007bff; color: #fff;" data-toggle="collapse" data-target="#searchFilters" title="Buscar en Todas las Órdenes"><i class="fas fa-search"></i></button>
+            <a href="{{ url_for('lm.export_excel_lm') }}" class="btn btn-sm btn-outline-success" title="Exportar a Excel"><i class="fas fa-file-excel"></i><span class="d-none d-md-inline ml-1">Exportar</span></a>
+            <a href="{{ url_for('lm.programa_lm_aprobados') }}" class="btn btn-sm btn-outline-info" title="Ver Aprobados"><i class="fas fa-check-circle"></i><span class="d-none d-md-inline ml-1">Aprobados</span></a>
+            {% if 'users.manage' in permissions %}
+            <div class="btn-group">
+                <button class="btn btn-sm btn-primary" data-toggle="modal" data-target="#addRowModal"><i class="fas fa-plus mr-1"></i><span class="d-none d-md-inline">Añadir</span></button>
+                <button id="reorderBtn" class="btn btn-sm btn-info"><i class="fas fa-sort mr-1"></i><span class="d-none d-md-inline">Ordenar</span></button>
+                <button class="btn btn-sm btn-secondary" data-toggle="modal" data-target="#manageColumnsModal"><i class="fas fa-columns mr-1"></i><span class="d-none d-md-inline">Columnas</span></button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="collapse" id="searchFilters">
+        <div class="card card-body mb-3">
+            <form method="GET" action="{{ url_for('lm.programa_lm') }}">
+                <div class="form-row align-items-end">
+                    <div class="form-group col-md-5">
+                        <label for="wip_order_filter">Buscar por WIP Order:</label>
+                        <input type="text" class="form-control" id="wip_order_filter" name="wip_order_filter" value="{{ request.args.get('wip_order_filter', '') }}" placeholder="Escribe parte del WIP Order...">
+                    </div>
+                    <div class="form-group col-md-5">
+                        <label for="item_filter">Buscar por Item:</label>
+                        <input type="text" class="form-control" id="item_filter" name="item_filter" value="{{ request.args.get('item_filter', '') }}" placeholder="Escribe parte del Item...">
+                    </div>
+                    <div class="form-group col-md-2 d-flex" style="gap: 0.5rem;">
+                        <button type="submit" class="btn btn-primary btn-sm w-100"><i class="fas fa-search"></i> Buscar</button>
+                        <a href="{{ url_for('lm.programa_lm') }}" class="btn btn-secondary btn-sm w-100">Limpiar</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div class="table-responsive desktop-view">
+        <table class="table table-bordered table-hover lm-table">
+            <thead class="thead-light">
+                <tr id="lm-table-header-row">
+                    <th class="non-draggable actions-col" style="min-width: 100px;">Acciones</th>
+                    <th class="non-draggable" style="width: 50px;">No.</th>
+                    <th class="non-draggable" style="min-width: 150px;">WIP order</th>
+                    <th class="non-draggable" style="min-width: 150px;">Item</th>
+                    <th class="non-draggable" style="min-width: 70px;">QTY</th>
+                    {% for columna in columnas %}
+                        <th style="min-width: {{ columna.ancho_columna }}px;" data-col-id="{{ columna.id }}" class="sortable-column {% if 'programa_lm.admin' not in permissions %}non-draggable{% endif %}">{{ columna.nombre }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for orden in ordenes %}
+                <tr class="{% if orden.id in duplicate_ids %}duplicate-row{% endif %}">
+                    <td class="align-middle text-center action-buttons-cell actions-col">
+                        <div class="action-buttons">
+                            {% if 'programa_lm.edit' in permissions %}
+                                <form action="{{ url_for('lm.toggle_status_lm', orden_id=orden.id) }}" method="POST" class="d-inline">
+                                    <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
+                                    <button type="submit" class="btn btn-sm btn-success" title="Aprobar"><i class="fas fa-check"></i></button>
+                                </form>
+                            {% endif %}
+                            {% if 'users.manage' in permissions %}
+                                <button class="btn btn-sm btn-warning" data-toggle="modal" data-target="#editRowModal" 
+                                        data-orden-id="{{ orden.id }}" data-wip-order="{{ orden.wip_order }}" 
+                                        data-item="{{ orden.item or '' }}" data-qty="{{ orden.qty }}" title="Editar Fila">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <form action="{{ url_for('lm.delete_row_lm', orden_id=orden.id) }}" method="POST" onsubmit="return confirm('¿Estás seguro de que quieres eliminar la orden \'{{ orden.wip_order }}\'?');" class="d-inline">
+                                    <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
+                                    <button type="submit" class="btn btn-sm btn-danger" title="Eliminar Fila"><i class="fas fa-trash-alt"></i></button>
+                                </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td class="align-middle text-center">{{ (pagination.page - 1) * pagination.per_page + loop.index }}</td>
+                    <td class="align-middle font-weight-bold">{{ orden.wip_order }}</td>
+                    <td class="align-middle">{{ orden.item or '' }}</td>
+                    <td class="align-middle text-center">{{ orden.qty }}</td>
+                    
+                    {% for columna in columnas %}
+                        {% set celda_obj = datos.get((orden.id, columna.id)) %}
+                        {% set estilos_css = (celda_obj.estilos_css | fromjson) if (celda_obj and celda_obj.estilos_css) else {} %}
+                        {% set estilos_str = 'background-color:%s; color:%s; font-weight:%s;' % (estilos_css.get('backgroundColor', ''), estilos_css.get('color', ''), estilos_css.get('fontWeight', '')) %}
+                        <td class="editable-cell align-middle" style="{{ estilos_str }}" 
+                            data-orden-id="{{ orden.id }}" 
+                            data-columna-id="{{ columna.id }}" 
+                            data-styles="{{ celda_obj.estilos_css or '{}' }}" 
+                            {% if 'programa_lm.admin' in permissions or ('programa_lm.edit' in permissions and columna.editable_por_lm) %}contenteditable="true"{% else %}contenteditable="false"{% endif %}>{{- celda_obj.valor if celda_obj else '' -}}</td>
+                    {% endfor %}
+                </tr>
+                {% else %}
+                <tr><td colspan="{{ 5 + columnas|length }}" class="text-center text-muted py-4">No se encontraron órdenes.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="mobile-view">
+        {% for orden in ordenes %}
+        <div class="card lm-card {% if orden.id in duplicate_ids %}duplicate-row{% endif %}">
+            <div class="card-header">
+                <strong>#{{ (pagination.page - 1) * pagination.per_page + loop.index }} - {{ orden.wip_order }}</strong>
+            </div>
+            <div class="card-body">
+                <div class="info-section">
+                    <p><strong>Item:</strong> {{ orden.item or 'N/A' }}</p>
+                    <p><strong>QTY:</strong> {{ orden.qty }}</p>
+                </div>
+                <hr>
+                <div class="data-pills-section">
+                    {% for columna in columnas %}
+                        {% set celda_obj = datos.get((orden.id, columna.id)) %}
+                        {% if celda_obj and celda_obj.valor %}
+                            {% set valor_lower = celda_obj.valor|lower %}
+                            {% set pill_class = 'pill-green' %}
+                            {% if 'none' in valor_lower or 'falta' in valor_lower or 'error' in valor_lower %}
+                                {% set pill_class = 'pill-red' %}
+                            {% elif columna.nombre|lower == 'comentarios' or (celda_obj.valor|length > 10 and 'ok' not in valor_lower) %}
+                                {% set pill_class = 'pill-yellow' %}
+                            {% endif %}
+                            <div class="lm-mobile-data-pill {{ pill_class }}">
+                                <strong>{{ columna.nombre }}:</strong> {{ celda_obj.valor }}
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="card-footer">
+                <div class="actions-cell-container">
+                    {% if 'programa_lm.edit' in permissions %}
+                    <form action="{{ url_for('lm.toggle_status_lm', orden_id=orden.id) }}" method="POST" class="d-inline"><input type="hidden" name="csrf_token" value="{{ session.csrf_token }}"><button type="submit" class="btn btn-sm btn-success">Aprobar</button></form>
+                    {% endif %}
+                    {% if 'users.manage' in permissions %}
+                    <button class="btn btn-sm btn-warning" data-toggle="modal" data-target="#editRowModal" data-orden-id="{{ orden.id }}" data-wip-order="{{ orden.wip_order }}" data-item="{{ orden.item or '' }}" data-qty="{{ orden.qty }}">Editar</button>
+                    <form action="{{ url_for('lm.delete_row_lm', orden_id=orden.id) }}" method="POST" onsubmit="return confirm('¿Estás seguro de que quieres eliminar la orden \'{{ orden.wip_order }}\'?');" class="d-inline"><input type="hidden" name="csrf_token" value="{{ session.csrf_token }}"><button type="submit" class="btn btn-sm btn-danger">Eliminar</button></form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <p class="text-center text-muted mt-4">No se encontraron órdenes pendientes.</p>
+        {% endfor %}
+    </div>
+
+    {# Tabla de aprobados si hay búsqueda y resultados #}
+    {% if ordenes_aprobadas is defined and ordenes_aprobadas|length > 0 %}
+    <div class="mt-5">
+        <h4 class="mb-3 text-success">Órdenes Aprobadas</h4>
+        <div class="table-responsive desktop-view">
+            <table class="table table-bordered table-hover lm-table">
+                <thead class="thead-light">
+                    <tr>
+                        <th style="min-width: 100px;">Acciones</th>
+                        <th style="width: 50px;">No.</th>
+                        <th style="min-width: 150px;">WIP order</th>
+                        <th style="min-width: 150px;">Item</th>
+                        <th style="min-width: 70px;">QTY</th>
+                        {% for columna in columnas %}
+                            <th style="min-width: {{ columna.ancho_columna }}px;">{{ columna.nombre }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for orden in ordenes_aprobadas %}
+                    <tr>
+                        <td class="align-middle text-center">
+                            {% if 'programa_lm.edit' in permissions %}
+                            <form action="{{ url_for('lm.toggle_status_lm', orden_id=orden.id) }}" method="POST" class="d-inline">
+                                <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
+                                <button type="submit" class="btn btn-sm btn-warning" title="Devolver a Pendientes"><i class="fas fa-undo"></i></button>
+                            </form>
+                            {% endif %}
+                        </td>
+                        <td class="align-middle text-center">{{ (pagination_aprobados.page - 1) * pagination_aprobados.per_page + loop.index }}</td>
+                        <td class="align-middle font-weight-bold">{{ orden.wip_order }}</td>
+                        <td class="align-middle">{{ orden.item or '' }}</td>
+                        <td class="align-middle text-center">{{ orden.qty }}</td>
+                        {% for columna in columnas %}
+                            {% set celda_obj = datos_aprobados.get((orden.id, columna.id)) %}
+                            <td class="align-middle">{{- celda_obj.valor if celda_obj else '' -}}</td>
+                        {% endfor %}
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="{{ 5 + columnas|length }}" class="text-center text-muted py-4">No se encontraron órdenes aprobadas.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    {% include 'partials/_pagination.html' %}
+</div>
+
+{% include 'partials/cell_context_menu.html' %}
+
+{% if 'users.manage' in permissions %}
+    {% include 'modals/lm_add_row_modal.html' %}
+    {% with base_action_url=url_for('lm.edit_row_lm', orden_id=0) %}
+        {% include 'modals/lm_edit_row_modal.html' %}
+    {% endwith %}
+    {% include 'modals/lm_manage_columns_modal.html' %}
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="{{ url_for('static', filename='js/programa_lm.js') }}"></script>
+{% endblock %}

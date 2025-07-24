@@ -1,0 +1,163 @@
+{% extends "layout.html" %}
+{% block styles %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/programa_rotores.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/programa_lm.css') }}">
+{% endblock %}
+{% block title %}Programa Rotores - Pendientes{% endblock %}
+{% block page_header %}Programa de Rotores (Pendientes){% endblock %}
+
+{% block content %}
+<div class="content-section programa-rotores-container"
+     data-csrf-token="{{ session.csrf_token }}"
+     data-update-cell-url="{{ url_for('rotores.update_cell_rotores') }}">
+
+    <div class="command-bar">
+        <div class="command-bar-left">
+            <h4 class="mb-0">Órdenes Pendientes</h4>
+        </div>
+        <div class="command-bar-right">
+            <button id="toggleActionsColBtn" class="btn btn-sm btn-outline-secondary" title="Ocultar/Mostrar Acciones"><i class="fas fa-eye"></i></button>
+            <button class="btn btn-sm btn-primary" style="background-color: #007bff; border-color: #007bff; color: #fff;" data-toggle="collapse" data-target="#searchFilters" title="Buscar Órdenes"><i class="fas fa-search"></i></button>
+            <a href="{{ url_for('rotores.export_excel_rotores') }}" class="btn btn-sm btn-outline-success" title="Exportar a Excel"><i class="fas fa-file-excel"></i><span class="d-none d-md-inline ml-1">Exportar</span></a>
+            <a href="{{ url_for('rotores.programa_rotores_aprobados') }}" class="btn btn-sm btn-outline-info" title="Ver Aprobados"><i class="fas fa-check-circle"></i><span class="d-none d-md-inline ml-1">Aprobados</span></a>
+            {% if 'users.manage' in permissions %}
+            <button class="btn btn-sm btn-primary" data-toggle="modal" data-target="#addRowModal"><i class="fas fa-plus mr-1"></i><span class="d-none d-md-inline">Añadir Orden</span></button>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="collapse" id="searchFilters">
+        <div class="card card-body mb-3">
+            <form method="GET" action="{{ url_for('rotores.programa_rotores') }}">
+                <div class="form-row align-items-end">
+                    <div class="form-group col-md-5">
+                        <label for="item_filter">Buscar por Item:</label>
+                        <input type="text" class="form-control" id="item_filter" name="item_filter" value="{{ request.args.get('item_filter', '') }}" placeholder="Escribe parte del Item...">
+                    </div>
+                    <div class="form-group col-md-5">
+                        <label for="item_number_filter">Buscar por Item Number:</label>
+                        <input type="text" class="form-control" id="item_number_filter" name="item_number_filter" value="{{ request.args.get('item_number_filter', '') }}" placeholder="Escribe parte del Item Number...">
+                    </div>
+                    <div class="form-group col-md-2 d-flex" style="gap: 0.5rem;">
+                        <button type="submit" class="btn btn-primary btn-sm w-100"><i class="fas fa-search"></i> Buscar</button>
+                        <a href="{{ url_for('rotores.programa_rotores') }}" class="btn btn-secondary btn-sm w-100">Limpiar</a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- VISTA DE ESCRITORIO (TABLA) -->
+    <div class="table-responsive desktop-view">
+        <table class="table table-bordered table-hover lm-table">
+            <thead class="thead-light">
+                <tr>
+                    <th class="actions-col" style="min-width: 100px;">Acciones</th>
+                    <th style="width: 50px;">No.</th>
+                    <th style="min-width: 150px;">Item</th>
+                    <th style="min-width: 150px;">Item Number</th>
+                    <th style="min-width: 90px;">Cantidad</th>
+                    {% for columna in columnas %}
+                        <th style="min-width: 150px;">{{ columna.nombre }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for orden in ordenes %}
+                <tr>
+                    <td class="align-middle text-center action-buttons-cell actions-col">
+                        <div class="action-buttons">
+                            {% if 'programa_rotores.edit' in permissions %}
+                                <form action="{{ url_for('rotores.toggle_status_rotores', orden_id=orden.id) }}" method="POST" class="d-inline">
+                                    <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
+                                    <button type="submit" class="btn btn-sm btn-success" title="Aprobar"><i class="fas fa-check"></i></button>
+                                </form>
+                            {% endif %}
+                            {% if 'users.manage' in permissions %}
+                                <button class="btn btn-sm btn-warning" data-toggle="modal" data-target="#editRowModal" data-orden-id="{{ orden.id }}" data-item="{{ orden.item }}" data-item-number="{{ orden.item_number or '' }}" data-cantidad="{{ orden.cantidad }}" title="Editar"><i class="fas fa-edit"></i></button>
+                                <form action="{{ url_for('rotores.delete_row_rotores', orden_id=orden.id) }}" method="POST" onsubmit="return confirm('¿Seguro que quieres eliminar el item \'{{ orden.item }}\'?');" class="d-inline"><input type="hidden" name="csrf_token" value="{{ session.csrf_token }}"><button type="submit" class="btn btn-sm btn-danger" title="Eliminar"><i class="fas fa-trash-alt"></i></button></form>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td class="align-middle text-center">{{ (pagination.page - 1) * pagination.per_page + loop.index }}</td>
+                    <td class="align-middle font-weight-bold">{{ orden.item }}</td>
+                    <td class="align-middle">{{ orden.item_number or '' }}</td>
+                    <td class="align-middle text-center">{{ orden.cantidad }}</td>
+                    {% for columna in columnas %}
+                        {% set celda_obj = datos.get((orden.id, columna.id)) %}
+                        {% set estilos_css = (celda_obj.estilos_css | fromjson) if (celda_obj and celda_obj.estilos_css) else {} %}
+                        {% set estilos_str = 'background-color:%s; color:%s; font-weight:%s;' % (estilos_css.get('backgroundColor', ''), estilos_css.get('color', ''), estilos_css.get('fontWeight', '')) %}
+                        <td class="editable-cell align-middle" style="{{ estilos_str }}" data-orden-id="{{ orden.id }}" data-columna-id="{{ columna.id }}" data-styles="{{ celda_obj.estilos_css or '{}' }}" {% if 'programa_rotores.edit' in permissions %}contenteditable="true"{% else %}contenteditable="false"{% endif %}>{{- celda_obj.valor if celda_obj else '' -}}</td>
+                    {% endfor %}
+                </tr>
+                {% else %}
+                <tr><td colspan="{{ 5 + columnas|length }}" class="text-center text-muted py-4">No se encontraron órdenes pendientes.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- VISTA MÓVIL (TARJETAS) -->
+    <div class="mobile-view">
+        {% for orden in ordenes %}
+        <div class="card lm-card">
+            <div class="card-header">
+                <strong>#{{ (pagination.page - 1) * pagination.per_page + loop.index }} - {{ orden.item }}</strong>
+            </div>
+            <div class="card-body">
+                <div class="info-section">
+                    <p><strong>Item Number:</strong> {{ orden.item_number or 'N/A' }}</p>
+                    <p><strong>Cantidad:</strong> {{ orden.cantidad }}</p>
+                </div>
+                <hr>
+                <div class="data-pills-section">
+                    {% for columna in columnas %}
+                        {% set celda_obj = datos.get((orden.id, columna.id)) %}
+                        {% if celda_obj and celda_obj.valor %}
+                             <div class="lm-mobile-data-pill">
+                                <strong>{{ columna.nombre }}:</strong> {{ celda_obj.valor }}
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="card-footer">
+                 <div class="actions-cell-container">
+                    {% if 'programa_rotores.edit' in permissions %}
+                        <form action="{{ url_for('rotores.toggle_status_rotores', orden_id=orden.id) }}" method="POST" class="d-inline">
+                            <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
+                            <button type="submit" class="btn btn-sm btn-success">Aprobar</button>
+                        </form>
+                    {% endif %}
+                    {% if 'users.manage' in permissions %}
+                        <button class="btn btn-sm btn-warning" data-toggle="modal" data-target="#editRowModal" data-orden-id="{{ orden.id }}" data-item="{{ orden.item }}" data-item-number="{{ orden.item_number or '' }}" data-cantidad="{{ orden.cantidad }}">Editar</button>
+                        <form action="{{ url_for('rotores.delete_row_rotores', orden_id=orden.id) }}" method="POST" onsubmit="return confirm('¿Seguro que quieres eliminar el item \'{{ orden.item }}\'?');" class="d-inline">
+                            <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
+                            <button type="submit" class="btn btn-sm btn-danger">Eliminar</button>
+                        </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <p class="text-center text-muted mt-4">No se encontraron órdenes pendientes.</p>
+        {% endfor %}
+    </div>
+
+    {% include 'partials/_pagination.html' %}
+</div>
+
+{% include 'partials/cell_context_menu.html' %}
+
+{% if 'users.manage' in permissions %}
+    {% include 'modals/rotores_add_row_modal.html' %}
+    {% with base_action_url=url_for('rotores.edit_row_rotores', orden_id=0) %}
+        {% include 'modals/rotores_edit_row_modal.html' %}
+    {% endwith %}
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+    <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="{{ url_for('static', filename='js/programa_rotores.js') }}"></script>
+{% endblock %}

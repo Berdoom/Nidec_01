@@ -1,0 +1,34 @@
+{# ========================================================================== #}
+{#      Componente Reutilizable: Menú Contextual para Celdas (Simplificado)   #}
+{# ========================================================================== #}
+<div id="cell-context-menu">
+    <div class="context-menu-tabs d-flex justify-content-center mb-2" style="gap: 0.5rem;">
+        <button class="context-tab-btn active" data-tab="fill" style="border-radius: 8px 0 0 8px; border: none; background: #e9fbe5; color: #218838; font-weight: bold; padding: 0.3rem 1.2rem;">Relleno</button>
+        <button class="context-tab-btn" data-tab="font" style="border-radius: 0 8px 8px 0; border: none; background: #f0f0f0; color: #555; font-weight: bold; padding: 0.3rem 1.2rem;">Fuente</button>
+    </div>
+    <!-- Página de Colores de Relleno -->
+    <div class="context-menu-section context-tab-page" data-tab-page="fill" style="display: block;">
+        <div class="context-menu-section-title">Color de Relleno</div>
+        <div class="simple-palette-grid">
+            <div class="color-box" data-property="backgroundColor" data-color="rgb(255, 0, 0)" style="--bg-color: rgb(255, 0, 0);"></div>
+            <div class="color-box" data-property="backgroundColor" data-color="rgb(0, 176, 80)" style="--bg-color: rgb(0, 176, 80);"></div>
+            <div class="color-box" data-property="backgroundColor" data-color="rgb(255, 255, 0)" style="--bg-color: rgb(255, 255, 0);"></div>
+        </div>
+    </div>
+    <!-- Página de Colores de Fuente -->
+    <div class="context-menu-section context-tab-page" data-tab-page="font" style="display: none;">
+        <div class="context-menu-section-title">Color de Fuente</div>
+        <div class="simple-palette-grid">
+            <div class="color-box" data-property="color" data-color="rgb(255, 0, 0)" style="--bg-color: rgb(255, 0, 0);"></div>
+            <div class="color-box" data-property="color" data-color="rgb(0, 176, 80)" style="--bg-color: rgb(0, 176, 80);"></div>
+            <div class="color-box" data-property="color" data-color="rgb(255, 255, 0)" style="--bg-color: rgb(255, 255, 0);"></div>
+        </div>
+    </div>
+    <!-- Opciones Comunes (Negrita y Limpiar) -->
+    <div class="context-divider"></div>
+    <div id="format-bold" class="format-option">
+        <input type="checkbox" id="bold-checkbox" class="mr-2" style="cursor: pointer;">
+        <label for="bold-checkbox" class="mb-0" style="cursor: pointer;"><strong>Negrita</strong></label>
+    </div>
+    <button id="reset-style-btn" class="reset-style-btn"><i class="fas fa-eraser mr-2"></i>Limpiar Formato</button>
+</div>

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nidec - Inicio de Sesión</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+    <style>
+        html, body {
+            height: 100%;
+            min-height: 100vh;
+            background: #f7f7f7;
+        }
+        .login-split-container {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: row;
+        }
+        .login-left {
+            background: #24b817;
+            flex: 1 1 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-width: 0;
+            position: relative;
+        }
+        .login-logo-circle {
+            width: 340px;
+            height: 340px;
+            background: transparent;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 24px rgba(36, 184, 23, 0.10);
+            margin: 0 auto 2.2rem auto;
+            border: 16px solid #fff;
+        }
+        .login-logo-img {
+            width: 260px;
+            height: 260px;
+            object-fit: contain;
+            background: transparent;
+            display: block;
+        }
+        .login-logo-svg {
+            padding: 10px;
+            filter: drop-shadow(0 2px 8px rgba(36,184,23,0.10));
+        }
+        .login-right {
+            flex: 1 1 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 0;
+            background: #f7f7f7;
+        }
+        .login-form-card {
+            background: #fff;
+            border-radius: 1.2rem;
+            box-shadow: 0 4px 24px rgba(36, 184, 23, 0.08);
+            padding: 2.5rem 2rem 2rem 2rem;
+            max-width: 370px;
+            width: 100%;
+            margin: 2rem auto;
+        }
+        .login-title {
+            font-weight: 800;
+            color: #222;
+            text-align: center;
+            margin-bottom: 0.2rem;
+            font-size: 2.1rem;
+            letter-spacing: 1px;
+        }
+        .login-subtitle {
+            color: #555;
+            text-align: center;
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+        }
+        .form-control:focus {
+            border-color: #24b817;
+            box-shadow: 0 0 0 0.15rem rgba(36, 184, 23, 0.10);
+        }
+        .input-group-text {
+            background: #e9fbe5;
+            color: #218838;
+            border: none;
+        }
+        .btn-nidec {
+            background: #24b817;
+            color: #fff;
+            font-weight: 600;
+            border: none;
+            border-radius: 1.5rem;
+            transition: background 0.2s, box-shadow 0.2s;
+            box-shadow: 0 2px 8px rgba(36, 184, 23, 0.08);
+        }
+        .btn-nidec:hover, .btn-nidec:focus {
+            background: #218838;
+            color: #fff;
+            box-shadow: 0 4px 16px rgba(36, 184, 23, 0.18);
+        }
+        .login-alert {
+            border-radius: 1rem;
+            font-size: 1.05rem;
+        }
+        @media (max-width: 900px) {
+            .login-split-container { flex-direction: column; }
+            .login-left, .login-right { min-height: 220px; height: auto; flex: none; }
+            .login-left { padding: 2.5rem 0 1.5rem 0; }
+            .login-right { padding: 1.5rem 0 2.5rem 0; }
+        }
+        @media (max-width: 600px) {
+            .login-form-card { padding: 1.2rem 0.5rem 1.2rem 0.5rem; }
+            .login-logo-circle { width: 180px; height: 180px; border-width: 9px; }
+            .login-logo-img { width: 130px; height: 130px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-split-container animate__animated animate__fadeIn animate__faster">
+        <div class="login-left">
+            <div class="login-logo-circle animate__animated animate__fadeInDown animate__faster">
+                <img src="{{ url_for('static', filename='img/logo blanco.png') }}" alt="Logo Nidec" class="login-logo-img">
+            </div>
+        </div>
+        <div class="login-right">
+            <div class="login-form-card animate__animated animate__fadeInUp animate__fast">
+                <div class="login-title">Control de Producción</div>
+                <div class="login-subtitle">Bienvenido. Por favor, inicia sesión.</div>
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            {% if category == 'danger' %}
+                                <div class="alert alert-danger text-center login-alert animate__animated animate__shakeX animate__faster" role="alert">
+                                    {{ message }}
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+                <form action="{{ url_for('auth.login') }}" method="POST" class="w-100 text-left mt-3">
+                    <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
+                    <div class="form-group">
+                        <label for="username" class="font-weight-bold">Usuario:</label>
+                        <div class="input-group">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text"><i class="fas fa-user"></i></span>
+                            </div>
+                            <input type="text" class="form-control" id="username" name="username" required autocomplete="username" placeholder="Tu nombre de usuario">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="password" class="font-weight-bold">Contraseña:</label>
+                        <div class="input-group">
+                            <div class="input-group-prepend">
+                                <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                            </div>
+                            <input type="password" class="form-control" id="password" name="password" required autocomplete="current-password" placeholder="Tu contraseña">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-nidec btn-block mt-4 py-2 animate__animated animate__fadeIn animate__delay-1s">Entrar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

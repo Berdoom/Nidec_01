@@ -1,0 +1,156 @@
+{% extends "layout.html" %}
+
+{% block styles %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/captura.css') }}">
+{% endblock %}
+
+{% block title %}Captura de Producción - {{ group_name }}{% endblock %}
+{% block page_header %}Captura de Producción {{ group_name }}{% endblock %}
+
+{% block content %}
+<div class="captura-page">
+    <form id="productionForm" action="{{ url_for('production.captura', group=group_name.lower(), fecha=selected_date) }}" method="POST" data-group="{{ group_name.lower() }}" data-submit-reason-url="{{ url_for('production.submit_reason') }}">
+        <input type="hidden" name="csrf_token" value="{{ session.csrf_token }}">
+        <input type="hidden" name="fecha" value="{{ selected_date | e }}">
+        
+        <div class="content-section mb-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-center">
+                <h4 class="mb-2 mb-md-0">Editando Datos para: <strong class="text-nidec-green-dark">{{ selected_date }}</strong></h4>
+                <div class="d-flex align-items-center flex-wrap" style="gap: 0.5rem;">
+                    <div class="form-inline"><label for="fecha_selector" class="mr-2 font-weight-bold">Cambiar Fecha:</label><input type="date" class="form-control" id="fecha_selector" name="fecha_selector" value="{{ selected_date | e }}" onchange="window.location.href = '{{ url_for('production.captura', group=group_name.lower()) }}?fecha=' + this.value;"></div>
+                    <a href="{{ url_for('production.captura', group=group_name.lower()) }}" class="btn btn-secondary" title="Ir al Día de Negocio Actual"><i class="fas fa-calendar-day"></i> Hoy</a>
+                    {% if 'borrado.maestro' in permissions %}<button type="button" class="btn btn-danger" data-toggle="modal" data-target="#deleteDataModal" data-date="{{ selected_date }}" data-group="{{ group_name.lower() }}"><i class="fas fa-trash-alt"></i> Borrar Día</button>{% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- ================= VISTA DE ESCRITORIO ================= -->
+        <div class="table-responsive desktop-view">
+            <table class="table table-bordered table-sm captura-table-desktop">
+                <thead class="thead-light">
+                    <!-- Fila 1 del encabezado: Nombre del área y nombres de los turnos -->
+                    <tr>
+                        <th rowspan="2" class="align-middle area-name-cell" style="width: 12%;">Área</th>
+                        {% for turno_name in nombres_turnos %}<th colspan="{{ horas_turno[turno_name]|length + 2 }}" class="turno-separator">{{ turno_name }}</th>{% endfor %}
+                    </tr>
+                    <!-- Fila 2 del encabezado: Encabezados de columnas de cada turno -->
+                    <tr>
+                        {% for turno_name in nombres_turnos %}
+                        <th class="turno-separator">Pron.</th>
+                        {% for hora in horas_turno[turno_name] %}<th>{{ hora }}</th>{% endfor %}
+                        <th>Total</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for area in areas if area != 'Output' %}{% set area_slug = area | slug %}
+                    <tr data-area-slug="{{ area_slug }}" data-area-name="{{ area }}">
+                        <td class="area-name-cell">{{ area }}</td>
+                        
+                        {% for turno_name in nombres_turnos %}{% set turno_slug = turno_name | slug %}{% set turno_data = data.get(area, {}).get(turno_name, {}) %}
+                        
+                        <td class="turno-separator">
+                            <input type="number" name="pronostico_{{ area_slug }}_{{ turno_slug }}" value="{{ turno_data.get('pronostico', '') | e }}" class="form-control form-control-sm capture-input pronostico-turno-input" oninput="onInputChanged(this)">
+                        </td>
+                        
+                        <!-- ========================================================== -->
+                        <!-- ============== INICIO DE LA MODIFICACIÓN ================= -->
+                        <!-- ========================================================== -->
+                        {% for hora in horas_turno[turno_name] %}
+                            {% set hora_data = turno_data.get('horas', {}).get(hora, {}) %}
+                            <td>
+                                <input type="number" 
+                                       name="produccion_{{ area_slug }}_{{ hora }}" 
+                                       value="{{ hora_data.get('valor', '') | e }}" 
+                                       class="form-control form-control-sm capture-input produccion-hora-input {{ hora_data.get('class', '') }}" 
+                                       oninput="onInputChanged(this)">
+                            </td>
+                        {% endfor %}
+                        <!-- ========================================================== -->
+                        <!-- ================= FIN DE LA MODIFICACIÓN =================== -->
+                        <!-- ========================================================== -->
+                        
+                        <td class="text-center align-middle font-weight-bold total-column">
+                            <span id="total_produccion_turno_{{ area_slug }}_{{ turno_slug }}">0</span>
+                            <span class="validation-icon-container ml-2" id="validation_icon_container_{{ area_slug }}_{{ turno_slug }}" data-area-name="{{ area }}" data-turno-name="{{ turno_name }}" data-date="{{ selected_date }}" onclick="handleValidationIconClick(this)"></span>
+                        </td>
+
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                    
+                    <!-- Fila de Output -->
+                    <tr class="table-secondary">
+                        <td class="font-weight-bold area-name-cell">Output</td>
+                        {% set total_cols = namespace(value=0) %}{% for t in nombres_turnos %}{% set total_cols.value = total_cols.value + (horas_turno[t]|length + 2) %}{% endfor %}
+                        <td colspan="{{ total_cols.value - 2 }}"></td>
+                        <td class="total-column turno-separator"><input type="number" name="pronostico_output" class="form-control form-control-sm capture-input" value="{{ output_data.pronostico | e }}"></td>
+                        <td class="total-column"><input type="number" name="produccion_output" class="form-control form-control-sm capture-input" value="{{ output_data.output | e }}"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- ================= VISTA MÓVIL (ACORDEÓN) ================= -->
+        <div class="mobile-view">
+            <div class="accordion captura-accordion" id="accordionCapturaMobile">
+                {% for area in areas if area != 'Output' %}{% set area_slug = area | slug %}
+                <div class="card" data-area-slug="{{ area_slug }}" data-area-name="{{ area }}">
+                    <div class="card-header" id="heading_mobile_{{ area_slug }}"><button class="btn btn-link btn-block" type="button" data-toggle="collapse" data-target="#collapse_mobile_{{ area_slug }}">{{ area }}</button></div>
+                    <div id="collapse_mobile_{{ area_slug }}" class="collapse" data-parent="#accordionCapturaMobile">
+                        <div class="card-body">
+                            {% for turno_name in nombres_turnos %}{% set turno_slug = turno_name | slug %}{% set turno_data = data.get(area, {}).get(turno_name, {}) %}
+                            <div class="turno-section-mobile">
+                                <h6>{{ turno_name }}</h6>
+                                <div class="input-row-mobile"><label for="mobile_pronostico_{{ area_slug }}_{{ turno_slug }}">Pronóstico:</label><input type="number" id="mobile_pronostico_{{ area_slug }}_{{ turno_slug }}" name="pronostico_{{ area_slug }}_{{ turno_slug }}" value="{{ turno_data.get('pronostico', '') | e }}" class="form-control capture-input pronostico-turno-input" oninput="onInputChanged(this)"></div>
+                                
+                                <!-- ========================================================== -->
+                                <!-- ============== INICIO DE LA MODIFICACIÓN ================= -->
+                                <!-- ========================================================== -->
+                                {% for hora in horas_turno[turno_name] %}
+                                    {% set hora_data = turno_data.get('horas', {}).get(hora, {}) %}
+                                    <div class="input-row-mobile">
+                                        <label for="mobile_produccion_{{ area_slug }}_{{ hora }}">Prod. {{ hora }}:</label>
+                                        <input type="number" id="mobile_produccion_{{ area_slug }}_{{ hora }}" 
+                                               name="produccion_{{ area_slug }}_{{ hora }}" 
+                                               value="{{ hora_data.get('valor', '') | e }}" 
+                                               class="form-control capture-input produccion-hora-input {{ hora_data.get('class', '') }}" 
+                                               oninput="onInputChanged(this)">
+                                    </div>
+                                {% endfor %}
+                                <!-- ========================================================== -->
+                                <!-- ================= FIN DE LA MODIFICACIÓN =================== -->
+                                <!-- ========================================================== -->
+
+                                <div class="turno-totals-mobile d-flex justify-content-between align-items-center"><strong>Total Producido:</strong><div class="d-flex align-items-center"><span id="mobile_total_produccion_turno_{{ area_slug }}_{{ turno_slug }}">0</span><span class="validation-icon-container ml-3" id="mobile_validation_icon_container_{{ area_slug }}_{{ turno_slug }}" data-area-name="{{ area }}" data-turno-name="{{ turno_name }}" data-date="{{ selected_date }}" onclick="handleValidationIconClick(this)"></span></div></div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+                <div class="card"><div class="card-header"><button class="btn btn-link btn-block" type="button">Producción Final (Output)</button></div><div class="card-body"><div class="input-row-mobile"><label for="mobile_pronostico_output">Pronóstico:</label><input type="number" id="mobile_pronostico_output" name="pronostico_output" class="form-control capture-input" value="{{ output_data.pronostico | e }}"></div><div class="input-row-mobile"><label for="mobile_produccion_output">Output:</label><input type="number" id="mobile_produccion_output" name="produccion_output" class="form-control capture-input" value="{{ output_data.output | e }}"></div></div></div>
+            </div>
+        </div>
+        
+        <div class="save-button-container mobile-view"><button type="submit" class="btn btn-lg btn-success"><i class="fas fa-save mr-2"></i> Guardar Todos los Cambios</button></div>
+        <button type="submit" class="btn save-fab desktop-view" title="Guardar Todos los Cambios"><i class="fas fa-save"></i></button>
+    </form>
+</div>
+
+{% include 'modals/reason_modal.html' %}
+{% include 'modals/delete_data_modal.html' %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/captura.js') }}"></script>
+<script>
+    const HORAS_TURNO_JS = {{ horas_turno | tojson }};
+    const NOMBRES_TURNOS_JS = {{ nombres_turnos | tojson }};
+    const PRONOSTICOS_DATA_JS = {{ data | tojson }};
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeCapturaPage(HORAS_TURNO_JS, NOMBRES_TURNOS_JS, PRONOSTICOS_DATA_JS);
+        $('#deleteDataModal').on('show.bs.modal', function (event) { var button = $(event.relatedTarget); var date = button.data('date'); var group = button.data('group'); var modal = $(this); var baseUrl = "{{ url_for('production.borrar_datos_fecha', group='__GROUP__', fecha='__FECHA__') }}"; var actionUrl = baseUrl.replace('__GROUP__', group).replace('__FECHA__', date); modal.find('#deleteModalGroupName').text(group.toUpperCase()); modal.find('#deleteModalDate').text(date); modal.find('#deleteDataForm').attr('action', actionUrl); });
+    });
+</script>
+{% endblock %}
