@@ -203,7 +203,7 @@ menu.querySelectorAll('.color-box').forEach(box => {
             const property = box.dataset.property;
             const color = box.dataset.color;
             let currentStyles = JSON.parse(activeCell.dataset.styles || '{}');
-            // Si el estilo actual para esa propiedad es el mismo que el color del botón, lo quitamos.
+             // Si el estilo actual para esa propiedad es el mismo que el color del botón, lo quitamos.
             if (currentStyles[property] === color) {
                 delete currentStyles[property];
                 activeCell.style[property] = '';
