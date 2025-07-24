@@ -193,8 +193,22 @@ def reportes():
 
     report_type = request.args.get('report_type', 'single_day')
     today = get_business_date()
-    context = {'group': group, 'is_admin': is_admin, 'report_type': report_type, 'start_date': today.strftime('%Y-%m-%d'), 'end_date': today.strftime('%Y-%m-%d'), 'weekly_data': None, 'monthly_data': None, 'range_data': None, 'comparison_data': None}
-    
+    context = {
+        'group': group, 
+        'is_admin': is_admin, 
+        'report_type': report_type, 
+        'start_date': today.strftime('%Y-%m-%d'), 
+        'end_date': today.strftime('%Y-%m-%d'), 
+        'weekly_data': None, 
+        'monthly_data': None, 
+        'range_data': None, 
+        'comparison_data': None,
+        'area_weekly_data': None,
+        'area_monthly_data': None,
+        'selected_area': request.args.get('area', ''),
+        'AREAS_IHP': [a for a in AREAS_IHP if a != 'Output'],
+        'AREAS_FHP': [a for a in AREAS_FHP if a != 'Output']
+    }
     if report_type == 'single_day':
         selected_date_str = request.args.get('start_date', today.strftime('%Y-%m-%d'))
         context['start_date'] = selected_date_str
@@ -212,6 +226,28 @@ def reportes():
         month_pron_data = [services.get_daily_summary(group, date(selected_date.year, selected_date.month, day))['pronostico'] for day in range(1, days_in_month + 1)]
         context['monthly_data'] = {'labels': month_labels, 'producido': month_prod_data, 'pronostico': month_pron_data}
 
+    elif report_type == 'area_analysis':
+        selected_date_str = request.args.get('start_date', today.strftime('%Y-%m-%d'))
+        context['start_date'] = selected_date_str
+        selected_area = request.args.get('area')
+        
+        if selected_area:
+            selected_date = datetime.strptime(selected_date_str, '%Y-%m-%d').date()
+            
+            # Contexto Semanal para el Área
+            start_of_week = selected_date - timedelta(days=selected_date.weekday())
+            end_of_week = start_of_week + timedelta(days=6)
+            weekly_data = services.get_area_data_for_period(group, selected_area, start_of_week, end_of_week)
+            weekly_data['labels'] = [(start_of_week + timedelta(days=i)).strftime('%a %d') for i in range(7)]
+            context['area_weekly_data'] = weekly_data
+
+            # Contexto Mensual para el Área
+            start_of_month = selected_date.replace(day=1)
+            days_in_month = calendar.monthrange(selected_date.year, selected_date.month)[1]
+            end_of_month = selected_date.replace(day=days_in_month)
+            monthly_data = services.get_area_data_for_period(group, selected_area, start_of_month, end_of_month)
+            context['area_monthly_data'] = monthly_data
+            
     elif report_type == 'date_range':
         start_date_str = request.args.get('start_date', (today - timedelta(days=6)).strftime('%Y-%m-%d'))
         end_date_str = request.args.get('end_date', today.strftime('%Y-%m-%d'))

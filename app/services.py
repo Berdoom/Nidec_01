@@ -22,9 +22,39 @@ def get_group_performance(group_name, start_date_str, end_date_str=None):
         print(f"ERROR CRÍTICO en get_group_performance para {group_name}: {e}")
         return {'pronostico': '0', 'producido': '0', 'eficiencia': 0}
 
-# ==========================================================
-# ============== INICIO DE LA MODIFICACIÓN =================
-# ==========================================================
+def get_daily_area_summary(group, area, target_date):
+    """Calcula el resumen de pronóstico y producción para un área y día específicos."""
+    try:
+        pronostico = db_session.query(func.sum(Pronostico.valor_pronostico)).filter(
+            Pronostico.grupo == group,
+            Pronostico.fecha == target_date,
+            Pronostico.area == area
+        ).scalar() or 0
+        
+        producido = db_session.query(func.sum(ProduccionCaptura.valor_producido)).filter(
+            ProduccionCaptura.grupo == group,
+            ProduccionCaptura.fecha == target_date,
+            ProduccionCaptura.area == area
+        ).scalar() or 0
+
+        eficiencia = (producido / pronostico * 100) if pronostico > 0 else 0
+        return {'pronostico': pronostico, 'producido': producido, 'eficiencia': eficiencia}
+    except Exception as e:
+        print(f"Error en get_daily_area_summary: {e}")
+        return {'pronostico': 0, 'producido': 0, 'eficiencia': 0}
+
+def get_area_data_for_period(group, area, start_date, end_date):
+    """Obtiene los datos de producción y pronóstico para un área en un rango de fechas."""
+    labels, prod_data, pron_data = [], [], []
+    current_date = start_date
+    while current_date <= end_date:
+        summary = get_daily_area_summary(group, area, current_date)
+        labels.append(current_date.strftime('%d/%m'))
+        prod_data.append(summary['producido'])
+        pron_data.append(summary['pronostico'])
+        current_date += timedelta(days=1)
+    return {'labels': labels, 'producido': prod_data, 'pronostico': pron_data}
+
 def get_structured_capture_data(group_name, selected_date):
     data_to_render = {}
     try:
@@ -78,10 +108,6 @@ def get_structured_capture_data(group_name, selected_date):
         print(f"Error al obtener datos estructurados para captura: {e}")
         
     return data_to_render
-# ==========================================================
-# ================= FIN DE LA MODIFICACIÓN ===================
-# ==========================================================
-
 def get_output_data(group, date_str):
     try:
         selected_date = datetime.strptime(date_str, '%Y-%m-%d').date()
