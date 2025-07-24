@@ -197,17 +197,18 @@ function initializeContextMenu(url, token) {
     }
     // --- Fin tabs ---
 
-    menu.querySelectorAll('.color-box').forEach(box => {
+menu.querySelectorAll('.color-box').forEach(box => {
         box.addEventListener('click', () => {
             if (!activeCell) return;
             const property = box.dataset.property;
             const color = box.dataset.color;
             let currentStyles = JSON.parse(activeCell.dataset.styles || '{}');
-            // Si es color de fuente y ya está aplicado, quitarlo
-            if (property === 'color' && activeCell.style.color === color) {
+            // Si el estilo actual para esa propiedad es el mismo que el color del botón, lo quitamos.
+            if (currentStyles[property] === color) {
                 delete currentStyles[property];
-                activeCell.style.color = '';
+                activeCell.style[property] = '';
             } else {
+            // Si es un color diferente o no existe, lo aplicamos.
                 currentStyles[property] = color;
                 activeCell.style[property] = color;
             }

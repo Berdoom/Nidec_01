@@ -239,29 +239,53 @@ function initializeContextMenu(url, token) {
         cell.addEventListener('contextmenu', e => {
             e.preventDefault();
             activeCell = cell;
+
+            // Hace el menú visible pero fuera de la vista para medir sus dimensiones
+            menu.style.visibility = 'hidden';
             menu.style.display = 'block';
-            menu.style.left = `${e.pageX}px`;
-            menu.style.top = `${e.pageY}px`;
+
+            const { offsetWidth: menuWidth, offsetHeight: menuHeight } = menu;
+            const { innerWidth: viewportWidth, innerHeight: viewportHeight } = window;
+            
+            let left = e.clientX;
+            let top = e.clientY;
+
+            // Ajusta la posición horizontal si se desborda
+            if (left + menuWidth > viewportWidth) {
+                left = viewportWidth - menuWidth - 5; // Añade un margen de 5px
+            }
+
+            // Ajusta la posición vertical si se desborda
+            if (top + menuHeight > viewportHeight) {
+                top = viewportHeight - menuHeight - 5; // Añade un margen de 5px
+            }
+
+            // Aplica las posiciones calculadas y hace visible el menú
+            menu.style.left = `${left}px`;
+            menu.style.top = `${top}px`;
+            menu.style.visibility = 'visible';
             
             const styles = JSON.parse(cell.dataset.styles || '{}');
             document.getElementById('bold-checkbox').checked = styles.fontWeight === 'bold';
         });
     });
 
-    document.addEventListener('click', () => { if (menu.style.display === 'block') menu.style.display = 'none'; });
+    document.addEventListener('click', () => { if (menu.style.display === 'block') { menu.style.display = 'none'; } });
     menu.addEventListener('click', e => e.stopPropagation());
 
     menu.querySelectorAll('.color-box').forEach(box => {
         box.addEventListener('click', () => {
             if (!activeCell) return;
-            const property = box.dataset.property;
+            
+            const property = box.dataset.property; // Esto será 'backgroundColor' o 'color'
             const color = box.dataset.color;
-            let currentStyles = JSON.parse(activeCell.dataset.styles || '{}');
-            // Si es color de fuente y ya está aplicado, quitarlo
-            if (property === 'color' && activeCell.style.color === color) {
+            let currentStyles = JSON.parse(activeCell.dataset.styles || '{}');           
+            // Si el estilo actual para esa propiedad es el mismo que el color del botón, lo quitamos.
+            if (currentStyles[property] === color) {
                 delete currentStyles[property];
-                activeCell.style.color = '';
+                activeCell.style[property] = '';
             } else {
+            // Si es un color diferente o no existe, lo aplicamos.
                 currentStyles[property] = color;
                 activeCell.style[property] = color;
             }
