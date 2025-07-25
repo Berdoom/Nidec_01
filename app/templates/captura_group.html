@@ -48,9 +48,9 @@
                         <td class="area-name-cell">{{ area }}</td>
                         
                         {% for turno_name in nombres_turnos %}{% set turno_slug = turno_name | slug %}{% set turno_data = data.get(area, {}).get(turno_name, {}) %}
-                        
+                        {% set bloquear_pronostico = (current_user and current_user.role and current_user.role.nombre in ['IHP', 'FHP'] and turno_data.get('pronostico') not in [None, '']) %}
                         <td class="turno-separator">
-                            <input type="number" name="pronostico_{{ area_slug }}_{{ turno_slug }}" value="{{ turno_data.get('pronostico', '') | e }}" class="form-control form-control-sm capture-input pronostico-turno-input" oninput="onInputChanged(this)">
+                            <input type="number" name="pronostico_{{ area_slug }}_{{ turno_slug }}" value="{{ turno_data.get('pronostico', '') | e }}" class="form-control form-control-sm capture-input pronostico-turno-input{% if bloquear_pronostico %} bg-light text-muted{% endif %}" oninput="onInputChanged(this)" {% if bloquear_pronostico %}readonly tabindex="-1"{% endif %}>
                         </td>
                         
                         <!-- ========================================================== -->
@@ -100,9 +100,10 @@
                     <div id="collapse_mobile_{{ area_slug }}" class="collapse" data-parent="#accordionCapturaMobile">
                         <div class="card-body">
                             {% for turno_name in nombres_turnos %}{% set turno_slug = turno_name | slug %}{% set turno_data = data.get(area, {}).get(turno_name, {}) %}
+                            {% set bloquear_pronostico = (current_user and current_user.role and current_user.role.nombre in ['IHP', 'FHP'] and turno_data.get('pronostico') not in [None, '']) %}
                             <div class="turno-section-mobile">
                                 <h6>{{ turno_name }}</h6>
-                                <div class="input-row-mobile"><label for="mobile_pronostico_{{ area_slug }}_{{ turno_slug }}">Pronóstico:</label><input type="number" id="mobile_pronostico_{{ area_slug }}_{{ turno_slug }}" name="pronostico_{{ area_slug }}_{{ turno_slug }}" value="{{ turno_data.get('pronostico', '') | e }}" class="form-control capture-input pronostico-turno-input" oninput="onInputChanged(this)"></div>
+                                <div class="input-row-mobile"><label for="mobile_pronostico_{{ area_slug }}_{{ turno_slug }}">Pronóstico:</label><input type="number" id="mobile_pronostico_{{ area_slug }}_{{ turno_slug }}" name="pronostico_{{ area_slug }}_{{ turno_slug }}" value="{{ turno_data.get('pronostico', '') | e }}" class="form-control capture-input pronostico-turno-input{% if bloquear_pronostico %} bg-light text-muted{% endif %}" oninput="onInputChanged(this)" {% if bloquear_pronostico %}readonly tabindex="-1"{% endif %}></div>
                                 
                                 <!-- ========================================================== -->
                                 <!-- ============== INICIO DE LA MODIFICACIÓN ================= -->
