@@ -130,7 +130,7 @@ def toggle_status_rotores(orden_id):
             orden.status = 'Aprobada' if orden.status == 'Pendiente' else 'Pendiente'
             flash(f"Orden '{orden.item}' marcada como {orden.status}.", "success")
             db_session.commit()
-            log_activity("Cambio Estado Orden Rotores", f"Orden ID {orden.id} a '{orden.status}'", "PROGRAMA_ROTORES")
+            log_activity("Cambio Estado Orden Rotores", f"Item '{orden.item}' a '{orden.status}'", "PROGRAMA_ROTORES")
         else: 
             flash("La orden no fue encontrada.", "danger")
     except Exception as e:

@@ -129,56 +129,7 @@ def dashboard_group(group):
                            performance_data=group_performance_data, 
                            output_data=output_data)
 
-@bp.route('/registro/<group>')
-@login_required
-@permission_required('registro.view')
-def registro(group):
-    group_upper = group.upper()
-    if group_upper not in ['IHP', 'FHP']: abort(404)
-    if group_upper not in session.get('viewable_roles', []): 
-        flash(f'No tienes permiso para ver el registro del grupo {group_upper}.', 'danger')
-        return redirect(url_for('production.dashboard'))
-        
-    selected_date_str = request.args.get('fecha', get_business_date().strftime('%Y-%m-%d'))
-    try:
-        selected_date = datetime.strptime(selected_date_str, '%Y-%m-%d').date()
-    except ValueError:
-        flash("Formato de fecha inválido, mostrando datos de hoy.", "warning")
-        selected_date_str = get_business_date().strftime('%Y-%m-%d')
-        selected_date = get_business_date()
 
-    areas_list = [a for a in (AREAS_IHP if group_upper == 'IHP' else AREAS_FHP) if a != 'Output']
-    all_performance_data = services.get_detailed_performance_data(selected_date)
-    group_performance_data = all_performance_data.get(group_upper, {})
-    output_data = services.get_output_data(group_upper, selected_date_str)
-    
-    meta_produccion = 4830 if group_upper == 'FHP' else 879
-    totals = {'pronostico': 0, 'producido': 0, 'eficiencia': 0}
-    
-    chart_labels, chart_producido, chart_pronostico = [], [], []
-
-    for area in areas_list:
-        total_pronostico_area, total_producido_area = 0, 0
-        turnos_data = group_performance_data.get(area, {})
-        for turno, data in turnos_data.items():
-            total_pronostico_area += data.get('pronostico', 0) or 0
-            total_producido_area += data.get('producido', 0)
-        
-        chart_labels.append(area); chart_producido.append(total_producido_area); chart_pronostico.append(total_pronostico_area)
-        totals['pronostico'] += total_pronostico_area; totals['producido'] += total_producido_area
-
-    totals['pronostico'] += output_data.get('pronostico', 0); totals['producido'] += output_data.get('output', 0)
-    chart_labels.append('Output'); chart_producido.append(output_data.get('output', 0)); chart_pronostico.append(output_data.get('pronostico', 0))
-    
-    if totals['pronostico'] > 0:
-        totals['eficiencia'] = (totals['producido'] / totals['pronostico']) * 100
-
-    chart_data = {'labels': chart_labels, 'producido': chart_producido, 'pronostico': chart_pronostico}
-
-    return render_template('registro_group.html', 
-                           selected_date=selected_date_str, performance_data=group_performance_data, areas=areas_list, 
-                           nombres_turnos=NOMBRES_TURNOS_PRODUCCION, output_data=output_data, group_name=group_upper, 
-                           totals=totals, meta=meta_produccion, horas_turno=HORAS_TURNO, chart_data=chart_data)
 
 @bp.route('/reportes')
 @login_required
@@ -191,102 +142,34 @@ def reportes():
     if not is_admin and group not in session.get('viewable_roles', []): 
         group = default_group
 
-    report_type = request.args.get('report_type', 'single_day')
+    # Parámetros simplificados
     today = get_business_date()
+    selected_date_str = request.args.get('date', today.strftime('%Y-%m-%d'))
+    selected_area = request.args.get('area', 'GENERAL')  # GENERAL, o área específica
+    
+    try:
+        selected_date = datetime.strptime(selected_date_str, '%Y-%m-%d').date()
+    except ValueError:
+        selected_date = today
+        selected_date_str = today.strftime('%Y-%m-%d')
+
+    # Obtener datos optimizados
+    weekly_data, monthly_data = services.get_optimized_report_data(group, selected_area, selected_date)
+    
+    # Obtener datos detallados del día específico para la tabla
+    daily_data = services.get_daily_detailed_data(group, selected_area, selected_date)
+    
     context = {
-        'group': group, 
-        'is_admin': is_admin, 
-        'report_type': report_type, 
-        'start_date': today.strftime('%Y-%m-%d'), 
-        'end_date': today.strftime('%Y-%m-%d'), 
-        'weekly_data': None, 
-        'monthly_data': None, 
-        'range_data': None, 
-        'comparison_data': None,
-        'area_weekly_data': None,
-        'area_monthly_data': None,
-        'selected_area': request.args.get('area', ''),
+        'group': group,
+        'selected_area': selected_area,
+        'selected_date': selected_date_str,
+        'is_admin': is_admin,
+        'weekly_data': weekly_data,
+        'monthly_data': monthly_data,
+        'daily_data': daily_data,
         'AREAS_IHP': [a for a in AREAS_IHP if a != 'Output'],
         'AREAS_FHP': [a for a in AREAS_FHP if a != 'Output']
     }
-    if report_type == 'single_day':
-        selected_date_str = request.args.get('start_date', today.strftime('%Y-%m-%d'))
-        context['start_date'] = selected_date_str
-        selected_date = datetime.strptime(selected_date_str, '%Y-%m-%d').date()
-        start_of_week = selected_date - timedelta(days=selected_date.weekday())
-        
-        week_labels = [(start_of_week + timedelta(days=i)).strftime('%a %d') for i in range(7)]
-        week_prod_data = [services.get_daily_summary(group, start_of_week + timedelta(days=i))['producido'] for i in range(7)]
-        week_pron_data = [services.get_daily_summary(group, start_of_week + timedelta(days=i))['pronostico'] for i in range(7)]
-        context['weekly_data'] = {'labels': week_labels, 'producido': week_prod_data, 'pronostico': week_pron_data}
-        
-        days_in_month = calendar.monthrange(selected_date.year, selected_date.month)[1]
-        month_labels = [str(day) for day in range(1, days_in_month + 1)]
-        month_prod_data = [services.get_daily_summary(group, date(selected_date.year, selected_date.month, day))['producido'] for day in range(1, days_in_month + 1)]
-        month_pron_data = [services.get_daily_summary(group, date(selected_date.year, selected_date.month, day))['pronostico'] for day in range(1, days_in_month + 1)]
-        context['monthly_data'] = {'labels': month_labels, 'producido': month_prod_data, 'pronostico': month_pron_data}
-
-    elif report_type == 'area_analysis':
-        selected_date_str = request.args.get('start_date', today.strftime('%Y-%m-%d'))
-        context['start_date'] = selected_date_str
-        selected_area = request.args.get('area')
-        
-        if selected_area:
-            selected_date = datetime.strptime(selected_date_str, '%Y-%m-%d').date()
-            
-            # Contexto Semanal para el Área
-            start_of_week = selected_date - timedelta(days=selected_date.weekday())
-            end_of_week = start_of_week + timedelta(days=6)
-            weekly_data = services.get_area_data_for_period(group, selected_area, start_of_week, end_of_week)
-            weekly_data['labels'] = [(start_of_week + timedelta(days=i)).strftime('%a %d') for i in range(7)]
-            context['area_weekly_data'] = weekly_data
-
-            # Contexto Mensual para el Área
-            start_of_month = selected_date.replace(day=1)
-            days_in_month = calendar.monthrange(selected_date.year, selected_date.month)[1]
-            end_of_month = selected_date.replace(day=days_in_month)
-            monthly_data = services.get_area_data_for_period(group, selected_area, start_of_month, end_of_month)
-            context['area_monthly_data'] = monthly_data
-            
-    elif report_type == 'date_range':
-        start_date_str = request.args.get('start_date', (today - timedelta(days=6)).strftime('%Y-%m-%d'))
-        end_date_str = request.args.get('end_date', today.strftime('%Y-%m-%d'))
-        context['start_date'] = start_date_str
-        context['end_date'] = end_date_str
-        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
-        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
-        
-        range_labels, range_prod, range_pron, range_eff, table_rows = [], [], [], [], []
-        for i in range((end_date - start_date).days + 1):
-            current_date = start_date + timedelta(days=i)
-            summary = services.get_daily_summary(group, current_date)
-            range_labels.append(current_date.strftime('%d/%m/%Y'))
-            range_prod.append(summary['producido'])
-            range_pron.append(summary['pronostico'])
-            range_eff.append(round(summary['eficiencia'], 1))
-            table_rows.append({'fecha': current_date.strftime('%d/%m/%Y'), **summary})
-        context['range_data'] = {'chart': {'labels': range_labels, 'producido': range_prod, 'pronostico': range_pron, 'eficiencia': range_eff}, 'table': table_rows}
-
-    elif report_type == 'group_comparison':
-        start_date_str = request.args.get('start_date', (today - timedelta(days=6)).strftime('%Y-%m-%d'))
-        end_date_str = request.args.get('end_date', today.strftime('%Y-%m-%d'))
-        context['start_date'] = start_date_str
-        context['end_date'] = end_date_str
-        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
-        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
-        
-        labels, ihp_prod_data, fhp_prod_data = [], [], []
-        total_ihp, total_fhp = 0, 0
-        for i in range((end_date - start_date).days + 1):
-            current_date = start_date + timedelta(days=i)
-            labels.append(current_date.strftime('%d/%m'))
-            summary_ihp = services.get_daily_summary('IHP', current_date)
-            ihp_prod_data.append(summary_ihp['producido'])
-            total_ihp += summary_ihp['producido']
-            summary_fhp = services.get_daily_summary('FHP', current_date)
-            fhp_prod_data.append(summary_fhp['producido'])
-            total_fhp += summary_fhp['producido']
-        context['comparison_data'] = {'chart': {'labels': labels, 'ihp_data': ihp_prod_data, 'fhp_data': fhp_prod_data}, 'summary': {'total_ihp': total_ihp, 'total_fhp': total_fhp}}
 
     return render_template('reportes.html', **context)
 
@@ -450,87 +333,7 @@ def submit_reason():
         log_activity("Error Justificación", str(e), "Sistema", "Error", "Critical")
         return jsonify({'status': 'error', 'message': f'Ocurrió un error en el servidor: {e}'}), 500
 
-@bp.route('/export_excel/<group>')
-@login_required
-@permission_required('registro.view')
-def export_excel(group):
-    group_upper = group.upper()
-    selected_date_str = request.args.get('fecha', get_business_date().strftime('%Y-%m-%d'))
-    try:
-        selected_date = datetime.strptime(selected_date_str, '%Y-%m-%d').date()
-    except ValueError:
-        flash("Formato de fecha inválido.", "warning")
-        return redirect(url_for('production.registro', group=group_upper))
 
-    all_performance_data = services.get_detailed_performance_data(selected_date)
-    production_data = all_performance_data.get(group_upper, {})
-    output_data = services.get_output_data(group_upper, selected_date_str)
-    meta_produccion = 4830 if group_upper == 'FHP' else 879
-    
-    records = []
-    areas_list = AREAS_IHP if group_upper == 'IHP' else AREAS_FHP
-    
-    for area in [a for a in areas_list if a != 'Output' and a in production_data]:
-        turnos_data = production_data[area]
-        record = {'Area': area}
-        total_pronostico_area, total_producido_area = 0, 0
-        for turno_name in NOMBRES_TURNOS_PRODUCCION:
-            data = turnos_data.get(turno_name, {})
-            pronostico, producido = data.get('pronostico', 0), data.get('producido', 0)
-            record[f'Pronóstico {turno_name}'] = pronostico
-            record[f'Producido {turno_name}'] = producido
-            total_pronostico_area += pronostico or 0
-            total_producido_area += producido or 0
-        record['Pronóstico Total'] = total_pronostico_area
-        record['Producido Total'] = total_producido_area
-        records.append(record)
-
-    if output_data and (output_data.get('pronostico') or output_data.get('output')):
-        output_record = {'Area': 'Output'}
-        [output_record.update({f'Pronóstico {t}': None, f'Producido {t}': None}) for t in NOMBRES_TURNOS_PRODUCCION]
-        output_record['Pronóstico Total'] = output_data.get('pronostico', 0)
-        output_record['Producido Total'] = output_data.get('output', 0)
-        records.append(output_record)
-
-    if not records:
-        flash('No hay datos para exportar en la fecha seleccionada.', 'warning')
-        return redirect(url_for('production.registro', group=group_upper, fecha=selected_date_str))
-
-    df = pd.DataFrame(records)
-    cols = ['Area']
-    [cols.extend([f'Pronóstico {t}', f'Producido {t}']) for t in NOMBRES_TURNOS_PRODUCCION]
-    cols.extend(['Pronóstico Total', 'Producido Total'])
-    df = df.reindex(columns=cols)
-    df['Meta'] = meta_produccion
-    
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        df.to_excel(writer, index=False, sheet_name='RegistroProduccion', startrow=1)
-        workbook, worksheet = writer.book, writer.sheets['RegistroProduccion']
-        header_format = workbook.add_format({'bold': True, 'text_wrap': True, 'valign': 'top', 'fg_color': '#D7E4BC', 'border': 1})
-        title_format = workbook.add_format({'bold': True, 'font_size': 14})
-        worksheet.write('A1', f'Reporte de Producción - {group_upper} ({selected_date_str})', title_format)
-        for col_num, value in enumerate(df.columns.values):
-            worksheet.write(1, col_num, value, header_format)
-        worksheet.set_column('A:A', 20)
-        worksheet.set_column('B:Z', 15)
-        num_rows = len(df)
-        
-        column_chart = workbook.add_chart({'type': 'column'})
-        line_chart = workbook.add_chart({'type': 'line'})
-        
-        column_chart.add_series({'name': ['RegistroProduccion', 1, df.columns.get_loc('Producido Total')], 'categories': ['RegistroProduccion', 2, 0, num_rows + 1, 0], 'values': ['RegistroProduccion', 2, df.columns.get_loc('Producido Total'), num_rows + 1, df.columns.get_loc('Producido Total')], 'fill': {'color': '#24b817'}, 'border': {'color': '#1c8c11'}})
-        line_chart.add_series({'name': ['RegistroProduccion', 1, df.columns.get_loc('Meta')], 'categories': ['RegistroProduccion', 2, 0, num_rows + 1, 0], 'values': ['RegistroProduccion', 2, df.columns.get_loc('Meta'), num_rows + 1, df.columns.get_loc('Meta')], 'line': {'color': 'red', 'width': 2.5, 'dash_type': 'solid'}})
-        
-        column_chart.combine(line_chart)
-        column_chart.set_title({'name': f'Producción vs. Meta ({group_upper})'})
-        column_chart.set_x_axis({'name': 'Área'})
-        column_chart.set_y_axis({'name': 'Unidades'})
-        column_chart.set_size({'width': 720, 'height': 480})
-        worksheet.insert_chart(f'A{num_rows + 5}', column_chart)
-        
-    output.seek(0)
-    return send_file(output, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', as_attachment=True, download_name=f'produccion_{group_upper}_{selected_date_str}.xlsx')
 
 @bp.route('/borrar_datos_fecha/<group>/<fecha>', methods=['POST'])
 @login_required

@@ -168,3 +168,226 @@ def get_daily_summary(group, target_date):
     except Exception as e:
         print(f"Error en get_daily_summary: {e}")
         return {'pronostico': 0, 'producido': 0, 'eficiencia': 0}
+
+def get_optimized_report_data(group, selected_area, selected_date):
+    """Función optimizada para obtener datos de reportes con una sola consulta por período."""
+    try:
+        # Calcular rangos de fechas
+        start_of_week = selected_date - timedelta(days=selected_date.weekday())
+        start_of_month = selected_date.replace(day=1)
+        days_in_month = calendar.monthrange(selected_date.year, selected_date.month)[1]
+        end_of_month = selected_date.replace(day=days_in_month)
+        
+        # Obtener datos semanales y mensuales en consultas optimizadas
+        if selected_area == 'GENERAL':
+            # Datos generales (todas las áreas sumadas)
+            weekly_data = _get_period_data_optimized(group, None, start_of_week, start_of_week + timedelta(days=6))
+            monthly_data = _get_period_data_optimized(group, None, start_of_month, end_of_month)
+        else:
+            # Datos por área específica
+            weekly_data = _get_period_data_optimized(group, selected_area, start_of_week, start_of_week + timedelta(days=6))
+            monthly_data = _get_period_data_optimized(group, selected_area, start_of_month, end_of_month)
+        
+        # Formatear etiquetas
+        weekly_data['labels'] = [(start_of_week + timedelta(days=i)).strftime('%a %d') for i in range(7)]
+        monthly_data['labels'] = [str(day) for day in range(1, days_in_month + 1)]
+        
+        return weekly_data, monthly_data
+    
+    except Exception as e:
+        print(f"Error en get_optimized_report_data: {e}")
+        # Datos vacíos en caso de error
+        empty_weekly = {'labels': [], 'producido': [0]*7, 'pronostico': [0]*7}
+        empty_monthly = {'labels': [], 'producido': [0]*days_in_month, 'pronostico': [0]*days_in_month}
+        return empty_weekly, empty_monthly
+
+def get_daily_detailed_data(group, selected_area, selected_date):
+    """
+    Obtiene datos detallados del día específico para análisis en tabla
+    """
+    from .utils import AREAS_IHP, AREAS_FHP, NOMBRES_TURNOS_PRODUCCION
+    from .models import Pronostico, ProduccionCaptura, OutputData
+    
+    try:
+        areas_list = AREAS_IHP if group == 'IHP' else AREAS_FHP
+        areas_to_query = [selected_area] if selected_area != 'GENERAL' else [a for a in areas_list if a != 'Output']
+        
+        daily_details = []
+        
+        # Definir horas por turno usando los nombres correctos
+        turno_hours = {
+            'Turno A': ['10AM', '1PM', '4PM'],
+            'Turno B': ['7PM', '10PM', '12AM'],
+            'Turno C': ['3AM', '6AM']
+        }
+        
+        for area in areas_to_query:
+            area_data = {
+                'area': area,
+                'turnos': {},
+                'total_pronostico': 0,
+                'total_producido': 0,
+                'eficiencia': 0
+            }
+            
+            # Inicializar todos los turnos con valores por defecto
+            for turno in NOMBRES_TURNOS_PRODUCCION:
+                area_data['turnos'][turno] = {
+                    'pronostico': 0,
+                    'producido': 0,
+                    'eficiencia': 0,
+                    'horas': {}
+                }
+            
+            for turno in NOMBRES_TURNOS_PRODUCCION:
+                # Obtener pronóstico
+                pronostico_query = db_session.query(Pronostico).filter_by(
+                    fecha=selected_date, grupo=group, area=area, turno=turno
+                ).first()
+                pronostico_val = pronostico_query.valor_pronostico if pronostico_query and pronostico_query.valor_pronostico else 0
+                
+                # Obtener producción por hora del turno
+                horas_turno = turno_hours.get(turno, [])
+                produccion_por_hora = {}
+                producido_total = 0
+                
+                for hora in horas_turno:
+                    produccion_hora = db_session.query(ProduccionCaptura).filter_by(
+                        fecha=selected_date, grupo=group, area=area, hora=hora
+                    ).first()
+                    valor_hora = produccion_hora.valor_producido if produccion_hora and produccion_hora.valor_producido else 0
+                    produccion_por_hora[hora] = valor_hora
+                    producido_total += valor_hora
+                
+                # Calcular eficiencia del turno
+                eficiencia_turno = (producido_total / pronostico_val * 100) if pronostico_val > 0 else 0
+                
+                area_data['turnos'][turno] = {
+                    'pronostico': pronostico_val,
+                    'producido': producido_total,
+                    'eficiencia': eficiencia_turno,
+                    'horas': produccion_por_hora
+                }
+                
+                area_data['total_pronostico'] += pronostico_val
+                area_data['total_producido'] += producido_total
+            
+            # Calcular eficiencia total del área
+            if area_data['total_pronostico'] > 0:
+                area_data['eficiencia'] = (area_data['total_producido'] / area_data['total_pronostico']) * 100
+            
+            daily_details.append(area_data)
+        
+        # Si es GENERAL, agregar datos de Output
+        if selected_area == 'GENERAL':
+            output_query = db_session.query(OutputData).filter_by(
+                fecha=selected_date, grupo=group
+            ).first()
+            
+            output_data = {
+                'area': 'Output',
+                'turnos': {
+                    'Turno A': {'pronostico': 0, 'producido': 0, 'eficiencia': 0, 'horas': {}},
+                    'Turno B': {'pronostico': 0, 'producido': 0, 'eficiencia': 0, 'horas': {}},
+                    'Turno C': {'pronostico': 0, 'producido': 0, 'eficiencia': 0, 'horas': {}}
+                },
+                'total_pronostico': 0,
+                'total_producido': 0,
+                'eficiencia': 0
+            }
+            
+            if output_query:
+                output_data['total_pronostico'] = output_query.pronostico or 0
+                output_data['total_producido'] = output_query.output or 0
+                if output_data['total_pronostico'] > 0:
+                    output_data['eficiencia'] = (output_data['total_producido'] / output_data['total_pronostico']) * 100
+            
+            daily_details.append(output_data)
+        
+
+        return daily_details
+        
+    except Exception as e:
+        print(f"Error en get_daily_detailed_data: {e}")
+        # Devolver datos vacíos en caso de error
+        return []
+
+def _get_period_data_optimized(group, area, start_date, end_date):
+    """Función auxiliar para obtener datos de un período con consultas optimizadas."""
+    try:
+        # Consulta optimizada para pronósticos
+        pron_query = db_session.query(
+            Pronostico.fecha,
+            func.sum(Pronostico.valor_pronostico).label('total_pronostico')
+        ).filter(
+            Pronostico.grupo == group,
+            Pronostico.fecha.between(start_date, end_date)
+        )
+        
+        if area:
+            pron_query = pron_query.filter(Pronostico.area == area)
+        
+        pron_data = {row.fecha: row.total_pronostico for row in pron_query.group_by(Pronostico.fecha).all()}
+        
+        # Consulta optimizada para producción
+        prod_query = db_session.query(
+            ProduccionCaptura.fecha,
+            func.sum(ProduccionCaptura.valor_producido).label('total_producido')
+        ).filter(
+            ProduccionCaptura.grupo == group,
+            ProduccionCaptura.fecha.between(start_date, end_date)
+        )
+        
+        if area:
+            prod_query = prod_query.filter(ProduccionCaptura.area == area)
+        
+        prod_data = {row.fecha: row.total_producido for row in prod_query.group_by(ProduccionCaptura.fecha).all()}
+        
+        # Consultas para Output si es GENERAL
+        if not area:
+            # Output pronósticos
+            output_pron_query = db_session.query(
+                OutputData.fecha,
+                func.sum(OutputData.pronostico).label('total_pronostico')
+            ).filter(
+                OutputData.grupo == group,
+                OutputData.fecha.between(start_date, end_date)
+            ).group_by(OutputData.fecha).all()
+            
+            for row in output_pron_query:
+                pron_data[row.fecha] = pron_data.get(row.fecha, 0) + (row.total_pronostico or 0)
+            
+            # Output producción
+            output_prod_query = db_session.query(
+                OutputData.fecha,
+                func.sum(OutputData.output).label('total_output')
+            ).filter(
+                OutputData.grupo == group,
+                OutputData.fecha.between(start_date, end_date)
+            ).group_by(OutputData.fecha).all()
+            
+            for row in output_prod_query:
+                prod_data[row.fecha] = prod_data.get(row.fecha, 0) + (row.total_output or 0)
+        
+        # Construir arrays de datos
+        producido_array = []
+        pronostico_array = []
+        
+        current_date = start_date
+        while current_date <= end_date:
+            producido_array.append(prod_data.get(current_date, 0))
+            pronostico_array.append(pron_data.get(current_date, 0))
+            current_date += timedelta(days=1)
+        
+        return {
+            'producido': producido_array,
+            'pronostico': pronostico_array
+        }
+        
+    except Exception as e:
+        print(f"Error en _get_period_data_optimized: {e}")
+        days_count = (end_date - start_date).days + 1
+        return {
+            'producido': [0] * days_count,
+            'pronostico': [0] * days_count
+        }

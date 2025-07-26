@@ -184,7 +184,7 @@ def toggle_status_lm(orden_id):
             orden.status = 'Aprobada' if orden.status == 'Pendiente' else 'Pendiente'
             flash(f"Orden '{orden.wip_order}' marcada como {orden.status}.", "success")
             db_session.commit()
-            log_activity("Cambio Estado Orden LM", f"Orden ID {orden.id} a '{orden.status}'", "PROGRAMA_LM")
+            log_activity("Cambio Estado Orden LM", f"WIP Order '{orden.wip_order}' a '{orden.status}'", "PROGRAMA_LM")
         else: 
             flash("La orden no fue encontrada.", "danger")
     except Exception as e:
