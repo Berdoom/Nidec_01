@@ -4,6 +4,54 @@
 
 {% block styles %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <style>
+    /* Estilos para mejorar la visualización de tablas anchas */
+    .table-responsive {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        position: relative;
+    }
+
+    .table-responsive table {
+        margin-bottom: 0;
+        white-space: nowrap;
+    }
+
+    .table-responsive th,
+    .table-responsive td {
+        white-space: nowrap;
+        min-width: 70px;
+        padding: 0.4rem 0.25rem;
+        font-size: 0.85rem;
+    }
+
+    /* Scroll bar personalizado */
+    .table-responsive::-webkit-scrollbar {
+        height: 8px;
+    }
+
+    .table-responsive::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+
+    .table-responsive::-webkit-scrollbar-thumb {
+        background: #28a745;
+        border-radius: 4px;
+    }
+
+    .table-responsive::-webkit-scrollbar-thumb:hover {
+        background: #218838;
+    }
+
+    /* Asegurar que la tabla ocupe todo el ancho necesario */
+    .table-wide {
+        width: max-content !important;
+        min-width: 100%;
+    }
+    </style>
 {% endblock %}
 
 {% block content %}
@@ -35,8 +83,10 @@
     <div class="content-section mb-4">
         <h3 class="mb-4 font-weight-bold">Desempeño Detallado - {{ group_name }}</h3>
         
-        <div class="table-responsive desktop-view">
-            <table class="table table-bordered table-hover">
+        <!-- Vista para pantallas grandes (escritorio) -->
+        <div class="d-none d-xl-block">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover table-sm table-wide">
                 <thead class="text-center thead-light">
                     <tr><th rowspan="2" class="align-middle">Área</th>{% for turno in nombres_turnos %}<th colspan="{{ horas_turno[turno]|length + 2 }}">{{ turno }}</th>{% endfor %}<th rowspan="2" class="align-middle">Pronóstico<br>Total</th><th rowspan="2" class="align-middle">Total<br>Producido</th></tr>
                     <tr>{% for turno in nombres_turnos %}<th>Pronóstico</th>{% for hora in horas_turno[turno] %}<th>{{ hora }}</th>{% endfor %}<th>Total Turno</th>{% endfor %}</tr>
@@ -63,9 +113,72 @@
                     <tr class="table-light"><td><strong>Output</strong></td><td colspan="{{ total_columns_for_turns.value }}" class="text-center align-middle font-italic text-muted"></td><td class="text-center font-weight-bold">{{ "{:,.0f}".format(output_data.pronostico) }}</td><td class="text-center font-weight-bold">{{ "{:,.0f}".format(output_data.output) }}</td></tr>
                 </tbody>
             </table>
+            </div>
         </div>
-
-        <div class="mobile-view">
+        
+        <!-- Vista para tablets (pantallas medianas) -->
+        <div class="d-none d-lg-block d-xl-none">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover table-sm">
+                    <thead class="text-center thead-light">
+                        <tr>
+                            <th>Área</th>
+                            {% for turno in nombres_turnos %}
+                            <th>{{ turno }}<br><small class="text-muted">Pron/Prod</small></th>
+                            {% endfor %}
+                            <th>Total<br><small class="text-muted">Pron/Prod</small></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% set areas_list = AREAS_IHP if group_name == 'IHP' else AREAS_FHP %}{% set group_performance = performance_data.get(group_name, {}) %}
+                        {% for area in areas_list if area != 'Output' %}
+                        <tr>
+                            <td class="font-weight-bold">{{ area }}</td>
+                            {% set total_pronostico_area = namespace(value=0) %}
+                            {% set total_producido_area = namespace(value=0) %}
+                            {% for turno in nombres_turnos %}
+                                {% set turno_data = group_performance.get(area, {}).get(turno, {}) %}
+                                {% set pronostico = turno_data.get('pronostico') %}
+                                {% set producido_turno = turno_data.get('producido', 0) %}
+                                {% if pronostico is not none %}
+                                    {% set total_pronostico_area.value = total_pronostico_area.value + pronostico %}
+                                {% endif %}
+                                {% set total_producido_area.value = total_producido_area.value + producido_turno %}
+                                <td class="text-center">
+                                    <div class="d-flex flex-column">
+                                        <small class="text-warning font-weight-bold">{{ "{:,.0f}".format(pronostico or 0) }}</small>
+                                        <small class="text-success font-weight-bold">{{ "{:,.0f}".format(producido_turno) }}</small>
+                                    </div>
+                                </td>
+                            {% endfor %}
+                            <td class="text-center">
+                                <div class="d-flex flex-column">
+                                    <small class="text-warning font-weight-bold">{{ "{:,.0f}".format(total_pronostico_area.value) }}</small>
+                                    <small class="text-success font-weight-bold">{{ "{:,.0f}".format(total_producido_area.value) }}</small>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                        {% set output_data = output_data_ihp if group_name == 'IHP' else output_data_fhp %}
+                        <tr class="table-light">
+                            <td class="font-weight-bold">Output</td>
+                            <td colspan="{{ nombres_turnos|length }}" class="text-center text-muted font-italic">-</td>
+                            <td class="text-center">
+                                <div class="d-flex flex-column">
+                                    <small class="text-warning font-weight-bold">{{ "{:,.0f}".format(output_data.pronostico) }}</small>
+                                    <small class="text-success font-weight-bold">{{ "{:,.0f}".format(output_data.output) }}</small>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Vista para móviles -->
+        <div class="d-lg-none">
+            <!-- Vista compacta para móvil vertical -->
+            <div class="d-block d-sm-none">
             <h5 class="mb-3 text-center">Resumen de Eficiencia por Turno</h5>
             <table class="table mobile-summary-table text-center">
                 <thead class="thead-light"><tr><th>Área</th>{% for turno in nombres_turnos %}<th>{{ turno.replace('Turno ', '') }}</th>{% endfor %}</tr></thead>
@@ -86,6 +199,40 @@
             <div class="rotate-prompt-container">
                 <i class="fas fa-mobile-alt phone-icon"></i>
                 <span>Gira tu dispositivo para ver la tabla detallada.</span>
+            </div>
+            </div>
+            
+            <!-- Vista para móvil horizontal (cuando se gira el celular) -->
+            <div class="d-none d-sm-block d-lg-none">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover table-sm table-wide">
+                        <thead class="text-center thead-light">
+                            <tr><th rowspan="2" class="align-middle">Área</th>{% for turno in nombres_turnos %}<th colspan="{{ horas_turno[turno]|length + 2 }}">{{ turno }}</th>{% endfor %}<th rowspan="2" class="align-middle">Pronóstico<br>Total</th><th rowspan="2" class="align-middle">Total<br>Producido</th></tr>
+                            <tr>{% for turno in nombres_turnos %}<th>Pronóstico</th>{% for hora in horas_turno[turno] %}<th>{{ hora }}</th>{% endfor %}<th>Total Turno</th>{% endfor %}</tr>
+                        </thead>
+                        <tbody>
+                            {% set areas_list = AREAS_IHP if group_name == 'IHP' else AREAS_FHP %}{% set group_performance = performance_data.get(group_name, {}) %}
+                            {% for area in areas_list if area != 'Output' %}
+                            <tr>
+                                <td>{{ area }}</td>
+                                {% set total_pronostico_area = namespace(value=0) %}{% set total_producido_area = namespace(value=0) %}
+                                {% for turno in nombres_turnos %}
+                                    {% set turno_data = group_performance.get(area, {}).get(turno, {}) %}{% set pronostico = turno_data.get('pronostico') %}{% set producido_turno = turno_data.get('producido', 0) %}
+                                    {% if pronostico is not none %}{% set total_pronostico_area.value = total_pronostico_area.value + pronostico %}{% endif %}
+                                    {% set total_producido_area.value = total_producido_area.value + producido_turno %}
+                                    <td class="text-center">{{ "{:,.0f}".format(pronostico or 0) }}</td>
+                                    {% for hora in horas_turno[turno] %}{% set hora_data = turno_data.get('horas', {}).get(hora, {}) %}<td class="text-center {{ hora_data.get('class', '') }}">{{ "{:,.0f}".format(hora_data.get('valor')) if hora_data.get('valor') is not none else '-' }}</td>{% endfor %}
+                                    <td class="text-center font-weight-bold">{{ "{:,.0f}".format(producido_turno) }}</td>
+                                {% endfor %}
+                                <td class="text-center font-weight-bold">{{ "{:,.0f}".format(total_pronostico_area.value) }}</td><td class="text-center font-weight-bold">{{ "{:,.0f}".format(total_producido_area.value) }}</td>
+                            </tr>
+                            {% endfor %}
+                            {% set total_columns_for_turns = namespace(value=0) %}{% for turno in nombres_turnos %}{% set total_columns_for_turns.value = total_columns_for_turns.value + (horas_turno[turno]|length) + 2 %}{% endfor %}
+                            {% set output_data = output_data_ihp if group_name == 'IHP' else output_data_fhp %}
+                            <tr class="table-light"><td><strong>Output</strong></td><td colspan="{{ total_columns_for_turns.value }}" class="text-center align-middle font-italic text-muted"></td><td class="text-center font-weight-bold">{{ "{:,.0f}".format(output_data.pronostico) }}</td><td class="text-center font-weight-bold">{{ "{:,.0f}".format(output_data.output) }}</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>

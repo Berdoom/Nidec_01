@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
     
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/usmotors_logo.png') }}">
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
 
     {% block styles %}{% endblock %}
@@ -64,7 +64,7 @@
                 <div class="submenu" id="submenu-ihp">
                     {% if 'dashboard.view.group' in permissions %}<a href="{{ url_for('production.dashboard_group', group='ihp') }}" class="submenu-item">Dashboard</a>{% endif %}
                     {% if 'captura.access' in permissions %}<a href="{{ url_for('production.captura', group='ihp') }}" class="submenu-item">Captura</a>{% endif %}
-                    {% if 'registro.view' in permissions %}<a href="{{ url_for('production.registro', group='ihp') }}" class="submenu-item">Registro</a>{% endif %}
+
                 </div>
                 {% endif %}
 
@@ -76,7 +76,7 @@
                 <div class="submenu" id="submenu-fhp">
                     {% if 'dashboard.view.group' in permissions %}<a href="{{ url_for('production.dashboard_group', group='fhp') }}" class="submenu-item">Dashboard</a>{% endif %}
                     {% if 'captura.access' in permissions %}<a href="{{ url_for('production.captura', group='fhp') }}" class="submenu-item">Captura</a>{% endif %}
-                    {% if 'registro.view' in permissions %}<a href="{{ url_for('production.registro', group='fhp') }}" class="submenu-item">Registro</a>{% endif %}
+
                 </div>
                 {% endif %}
 

@@ -1,106 +1,349 @@
 {% extends "layout.html" %}
 
 {% block title %}Reportes de Producción{% endblock %}
-{% block page_header %}Análisis de Datos de Producción{% endblock %}
+{% block page_header %}Reportes de Producción Optimizados{% endblock %}
 
 {% block content %}
+<div class="content-section mb-4">
+    <h4 class="mb-3"><i class="fas fa-chart-bar mr-2"></i>Filtros de Reporte</h4>
+    <form method="GET" action="{{ url_for('production.reportes') }}">
+        <div class="row align-items-end">
+            <div class="col-md-3">
+                <label for="group">Grupo:</label>
+                <select id="group" name="group" class="form-control" {% if not is_admin %}disabled{% endif %}>
+                    <option value="IHP" {% if group == 'IHP' %}selected{% endif %}>IHP</option>
+                    <option value="FHP" {% if group == 'FHP' %}selected{% endif %}>FHP</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="area">Área:</label>
+                <select id="area" name="area" class="form-control">
+                    <option value="GENERAL" {% if selected_area == 'GENERAL' %}selected{% endif %}>General</option>
+                    {% set areas = AREAS_IHP if group == 'IHP' else AREAS_FHP %}
+                    {% for area in areas %}
+                    <option value="{{ area }}" {% if selected_area == area %}selected{% endif %}>{{ area }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="date">Fecha:</label>
+                <input type="date" class="form-control" id="date" name="date" value="{{ selected_date }}">
+            </div>
+            <div class="col-md-3">
+                <button type="submit" class="btn btn-success btn-block">
+                    <i class="fas fa-chart-line mr-1"></i> Generar Reporte
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
 
-<!-- 
-  Este contenedor principal ahora pasa todos los datos necesarios
-  al archivo JS externo a través de atributos data-*.
--->
-<div id="reports-container"
-    data-weekly-data='{{ weekly_data | tojson }}'
-    data-monthly-data='{{ monthly_data | tojson }}'
-    data-area-weekly-data='{{ area_weekly_data | tojson }}'
-    data-area-monthly-data='{{ area_monthly_data | tojson }}'
-    data-range-chart-data='{{ (range_data.chart if range_data else none) | tojson }}'
-    data-comparison-chart-data='{{ (comparison_data.chart if comparison_data else none) | tojson }}'
-    data-areas-ihp='{{ AREAS_IHP | tojson }}'
-    data-areas-fhp='{{ AREAS_FHP | tojson }}'
-    data-selected-area='{{ selected_area }}'
->
-    <!-- SECCIÓN DE FILTROS DINÁMICOS -->
-    <div class="content-section">
-        <form id="reportForm" method="GET" action="{{ url_for('production.reportes') }}">
-            <div class="row align-items-end">
-                <!-- Columna para Selectores Principales -->
-                <div class="col-lg-5 col-md-12">
-                    <div class="form-row">
-                        <div id="group_selector_container" class="form-group col-sm-6">
-                            <label for="group">Grupo:</label>
-                            <select id="group" name="group" class="form-control" {% if not is_admin %}disabled{% endif %}>
-                                <option value="IHP" {% if group == 'IHP' %}selected{% endif %}>IHP</option>
-                                <option value="FHP" {% if group == 'FHP' %}selected{% endif %}>FHP</option>
-                            </select>
-                        </div>
-                        <div class="form-group col-sm-6">
-                            <label for="report_type">Tipo de Análisis:</label>
-                            <select id="report_type" name="report_type" class="form-control">
-                                <option value="single_day" {% if report_type == 'single_day' %}selected{% endif %}>Análisis de un Día</option>
-                                <option value="area_analysis" {% if report_type == 'area_analysis' %}selected{% endif %}>Análisis por Área</option>
-                                <option value="date_range" {% if report_type == 'date_range' %}selected{% endif %}>Rendimiento de Grupo</option>
-                                <option value="group_comparison" {% if report_type == 'group_comparison' %}selected{% endif %}>Comparar Grupos (IHP vs FHP)</option>
-                            </select>
-                        </div>
-                    </div>
+{% if weekly_data and monthly_data %}
+<div class="content-section">
+    <h3 class="mb-4">
+        <i class="fas fa-calendar-alt mr-2"></i>
+        Reporte para {{ group }} 
+        {% if selected_area != 'GENERAL' %}- {{ selected_area }}{% endif %}
+        ({{ selected_date }})
+    </h3>
+    
+    <div class="row">
+        <!-- Contexto Semanal -->
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-calendar-week mr-2"></i>Contexto Semanal</h5>
                 </div>
-
-                <!-- Columna para los Inputs de Fecha y Área -->
-                <div class="col-lg-5 col-md-12">
-                    <div class="form-row">
-                        <div id="single_day_inputs" class="form-group col-sm-6" style="display:none;">
-                            <label for="single_date">Seleccionar Día:</label>
-                            <input type="date" class="form-control" id="single_date" name="start_date" value="{{ start_date }}">
-                        </div>
-                        <div id="area_selector_container" class="form-group col-sm-6" style="display:none;">
-                            <label for="area_selector">Área:</label>
-                            <select id="area_selector" name="area" class="form-control"></select>
-                        </div>
-                        <div id="date_range_inputs" class="form-row col-12" style="display:none;">
-                            <div class="form-group col-sm-6"><label for="range_start_date">Desde:</label><input type="date" class="form-control" id="range_start_date" name="start_date_range" value="{{ start_date }}"></div>
-                            <div class="form-group col-sm-6"><label for="range_end_date">Hasta:</label><input type="date" class="form-control" id="range_end_date" name="end_date" value="{{ end_date }}"></div>
-                        </div>
+                <div class="card-body">
+                    <div style="height: 350px;">
+                        <canvas id="weeklyChart"></canvas>
                     </div>
-                </div>
-
-                <div class="col-lg-2 col-md-12 mt-3 mt-lg-0">
-                    <div class="form-group"><button type="submit" class="btn btn-primary btn-block"><i class="fas fa-chart-line"></i> Generar</button></div>
                 </div>
             </div>
-        </form>
+        </div>
+        
+        <!-- Contexto Mensual -->
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-calendar-alt mr-2"></i>Contexto Mensual</h5>
+                </div>
+                <div class="card-body">
+                    <div style="height: 350px;">
+                        <canvas id="monthlyChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Resumen de Datos -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card bg-success text-white">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-info-circle mr-2"></i>Resumen de Datos</h5>
+                </div>
+                <div class="card-body py-4">
+                    <div class="row text-center">
+                        <div class="col-md-4">
+                            <h6 class="text-light mb-3 font-weight-bold">Total Semanal</h6>
+                            <div class="d-flex flex-column align-items-center">
+                                <div class="mb-2">
+                                    <small class="text-light d-block">Producido</small>
+                                    <span class="h5 text-white font-weight-bold" id="weeklyProduced">{{ "{:,}".format(weekly_data.producido | sum | round(0) | int) }}</span>
+                                </div>
+                                <div>
+                                    <small class="text-warning d-block">Pronóstico</small>
+                                    <span class="h5 text-warning font-weight-bold" id="weeklyForecast">{{ "{:,}".format(weekly_data.pronostico | sum | round(0) | int) }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <h6 class="text-light mb-3 font-weight-bold">Total Mensual</h6>
+                            <div class="d-flex flex-column align-items-center">
+                                <div class="mb-2">
+                                    <small class="text-light d-block">Producido</small>
+                                    <span class="h5 text-white font-weight-bold" id="monthlyProduced">{{ "{:,}".format(monthly_data.producido | sum | round(0) | int) }}</span>
+                                </div>
+                                <div>
+                                    <small class="text-warning d-block">Pronóstico</small>
+                                    <span class="h5 text-warning font-weight-bold" id="monthlyForecast">{{ "{:,}".format(monthly_data.pronostico | sum | round(0) | int) }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <h6 class="text-light mb-3 font-weight-bold">Eficiencia Mensual</h6>
+                            <div class="d-flex flex-column align-items-center justify-content-center" style="height: 100px;">
+                                {% set monthly_total_prod = monthly_data.producido | sum %}
+                                {% set monthly_total_pron = monthly_data.pronostico | sum %}
+                                {% if monthly_total_pron > 0 %}
+                                    <span class="h3 text-white font-weight-bold">{{ "%.1f" | format((monthly_total_prod / monthly_total_pron) * 100) }}%</span>
+                                {% else %}
+                                    <span class="h3 text-white font-weight-bold">N/A</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <!-- CONTENIDO CONDICIONAL DEL REPORTE (Sin cambios en esta sección) -->
-    {% if report_type == 'single_day' and weekly_data and monthly_data %}
-    <h3 class="mt-5 mb-3">Análisis para el día: <strong>{{ start_date }}</strong></h3>
-    <div class="row">
-        <div class="col-lg-6 mb-4"><div class="content-section h-100"><h4 class="mb-3">Contexto Semanal</h4><div style="height: 350px;"><canvas id="weeklyChart"></canvas></div></div></div>
-        <div class="col-lg-6 mb-4"><div class="content-section h-100"><h4 class="mb-3">Contexto Mensual</h4><div style="height: 350px;"><canvas id="monthlyChart"></canvas></div></div></div>
+    <!-- Tabla de Análisis del Día -->
+    {% if daily_data %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-table mr-2"></i>Análisis Detallado del Día - {{ selected_date }}</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="thead-dark">
+                                <tr>
+                                <th class="text-center">Área</th>
+                                <th class="text-center">Turno A<br><small class="text-muted">10AM - 1PM - 4PM</small></th>
+                                <th class="text-center">Turno B<br><small class="text-muted">7PM - 10PM - 12AM</small></th>
+                                <th class="text-center">Turno C<br><small class="text-muted">3AM - 6AM</small></th>
+                                <th class="text-center">Total</th>
+                                <th class="text-center">Eficiencia</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                                {% for area_data in daily_data %}
+                                <tr>
+                                    <td class="font-weight-bold">{{ area_data.area }}</td>
+                                    {% for turno in ['Turno A', 'Turno B', 'Turno C'] %}
+                                    <td class="text-center">
+                                        <div class="d-flex flex-column">
+                                            <small class="text-warning font-weight-bold mb-1">Pron: {{ "{:,}".format(area_data.turnos[turno].pronostico) }}</small>
+                                            <small class="text-success font-weight-bold mb-1">Total: {{ "{:,}".format(area_data.turnos[turno].producido) }}</small>
+                                            {% if area_data.area != 'Output' %}
+                                            <div class="text-muted" style="font-size: 0.7em;">
+                                                {% set horas_turno = {'Turno A': ['10AM', '1PM', '4PM'], 'Turno B': ['7PM', '10PM', '12AM'], 'Turno C': ['3AM', '6AM']} %}
+                                                {% for hora in horas_turno[turno] %}
+                                                    <div>{{ hora }}: {{ "{:,}".format(area_data.turnos[turno].horas.get(hora, 0)) }}</div>
+                                                {% endfor %}
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    {% endfor %}
+                                    <td class="text-center">
+                                        <div class="d-flex flex-column">
+                                            <small class="text-warning font-weight-bold">{{ "{:,}".format(area_data.total_pronostico) }}</small>
+                                            <small class="text-success font-weight-bold">{{ "{:,}".format(area_data.total_producido) }}</small>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        {% set eff = area_data.eficiencia %}
+                                        <span class="badge {% if eff >= 100 %}badge-success{% elif eff >= 80 %}badge-warning{% else %}badge-danger{% endif %} font-weight-bold">
+                                            {{ "%.1f" | format(eff) }}%
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
     {% endif %}
-
-    {% if report_type == 'area_analysis' and area_weekly_data and area_monthly_data %}
-    <h3 class="mt-5 mb-3">Análisis por Área: <strong>{{ selected_area }}</strong> ({{ group }}) para el día: <strong>{{ start_date }}</strong></h3>
-    <div class="row">
-        <div class="col-lg-6 mb-4"><div class="content-section h-100"><h4 class="mb-3">Contexto Semanal del Área</h4><div style="height: 350px;"><canvas id="areaWeeklyChart"></canvas></div></div></div>
-        <div class="col-lg-6 mb-4"><div class="content-section h-100"><h4 class="mb-3">Contexto Mensual del Área</h4><div style="height: 350px;"><canvas id="areaMonthlyChart"></canvas></div></div></div>
-    </div>
-    {% endif %}
-
-    {% if report_type == 'date_range' and range_data %}
-    <h3 class="mt-5 mb-3">Análisis del rango: <strong>{{ start_date }}</strong> al <strong>{{ end_date }}</strong></h3>
-    <!-- Contenido del reporte por rango... -->
-    {% endif %}
-
-    {% if report_type == 'group_comparison' and comparison_data %}
-    <h3 class="mt-5 mb-3">Comparación IHP vs. FHP del <strong>{{ start_date }}</strong> al <strong>{{ end_date }}</strong></h3>
-    <!-- Contenido del reporte de comparación... -->
-    {% endif %}
-
 </div>
+{% else %}
+<div class="content-section text-center">
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle mr-2"></i>
+        Selecciona los filtros y haz clic en "Generar Reporte" para ver los datos.
+    </div>
+</div>
+{% endif %}
+
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/reportes.js') }}"></script>
+<!-- Datos para JavaScript -->
+<script type="application/json" id="areas-data">{{ {'IHP': AREAS_IHP, 'FHP': AREAS_FHP} | tojson | safe }}</script>
+<script type="application/json" id="weekly-data">{{ weekly_data | tojson | safe }}</script>
+<script type="application/json" id="monthly-data">{{ monthly_data | tojson | safe }}</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Función para formatear números con comas
+    function formatNumber(num) {
+        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
+    
+    // Obtener datos del DOM con validación
+    const areasDataElement = document.getElementById('areas-data');
+    const weeklyDataElement = document.getElementById('weekly-data');
+    const monthlyDataElement = document.getElementById('monthly-data');
+    
+    if (!areasDataElement || !weeklyDataElement || !monthlyDataElement) {
+        console.error('Error: No se pudieron encontrar los elementos de datos necesarios');
+        return;
+    }
+    
+    let areasData, weeklyData, monthlyData;
+    try {
+        areasData = JSON.parse(areasDataElement.textContent);
+        weeklyData = JSON.parse(weeklyDataElement.textContent);
+        monthlyData = JSON.parse(monthlyDataElement.textContent);
+    } catch (e) {
+        console.error('Error al parsear datos JSON:', e);
+        return;
+    }
+    
+    // Actualizar áreas cuando cambie el grupo
+    const groupSelect = document.getElementById('group');
+    const areaSelect = document.getElementById('area');
+    
+    if (!groupSelect || !areaSelect) {
+        console.error('Error: No se pudieron encontrar los elementos de selección');
+        return;
+    }
+    
+    function updateAreas() {
+        const selectedGroup = groupSelect.value;
+        const currentArea = areaSelect.value;
+        
+        // Limpiar opciones actuales (excepto GENERAL)
+        areaSelect.innerHTML = '<option value="GENERAL">General</option>';
+        
+        // Agregar áreas del grupo seleccionado
+        if (areasData[selectedGroup]) {
+            areasData[selectedGroup].forEach(area => {
+                const option = document.createElement('option');
+                option.value = area;
+                option.textContent = area;
+                if (area === currentArea) option.selected = true;
+                areaSelect.appendChild(option);
+            });
+        }
+    }
+    
+    groupSelect.addEventListener('change', updateAreas);
+    updateAreas(); // Inicializar
+    
+    if (weeklyData && monthlyData) {
+        // Configuración común de Chart.js
+        const chartOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return formatNumber(value);
+                        }
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + formatNumber(context.parsed.y);
+                        }
+                    }
+                }
+            }
+        };
+        
+        // Gráfico Semanal
+        new Chart(document.getElementById('weeklyChart'), {
+            type: 'line',
+            data: {
+                labels: weeklyData.labels,
+                datasets: [{
+                    label: 'Producido',
+                    data: weeklyData.producido,
+                    borderColor: 'rgb(40, 167, 69)',
+                    backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                    tension: 0.1
+                }, {
+                    label: 'Pronóstico',
+                    data: weeklyData.pronostico,
+                    borderColor: 'rgb(255, 193, 7)',
+                    backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                    tension: 0.1
+                }]
+            },
+            options: chartOptions
+        });
+        
+        // Gráfico Mensual
+        new Chart(document.getElementById('monthlyChart'), {
+            type: 'bar',
+            data: {
+                labels: monthlyData.labels,
+                datasets: [{
+                    label: 'Producido',
+                    data: monthlyData.producido,
+                    backgroundColor: 'rgba(40, 167, 69, 0.8)',
+                    borderColor: 'rgb(40, 167, 69)',
+                    borderWidth: 1
+                }, {
+                    label: 'Pronóstico',
+                    data: monthlyData.pronostico,
+                    backgroundColor: 'rgba(255, 193, 7, 0.8)',
+                    borderColor: 'rgb(255, 193, 7)',
+                    borderWidth: 1
+                }]
+            },
+            options: chartOptions
+        });
+    }
+});
+</script>
 {% endblock %}

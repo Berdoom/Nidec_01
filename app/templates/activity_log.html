@@ -26,6 +26,8 @@
                     <option value="Todos" {% if not filtros.get('area_grupo') or filtros.get('area_grupo') == 'Todos' %}selected{% endif %}>Todos</option>
                     <option value="IHP" {% if filtros.get('area_grupo') == 'IHP' %}selected{% endif %}>IHP</option>
                     <option value="FHP" {% if filtros.get('area_grupo') == 'FHP' %}selected{% endif %}>FHP</option>
+                    <option value="PROGRAMA_LM" {% if filtros.get('area_grupo') == 'PROGRAMA_LM' %}selected{% endif %}>Programa LM</option>
+                    <option value="PROGRAMA_ROTORES" {% if filtros.get('area_grupo') == 'PROGRAMA_ROTORES' %}selected{% endif %}>Programa Rotores</option>
                     <option value="ADMIN" {% if filtros.get('area_grupo') == 'ADMIN' %}selected{% endif %}>Admin</option>
                     <option value="Sistema" {% if filtros.get('area_grupo') == 'Sistema' %}selected{% endif %}>Sistema</option>
                 </select>
